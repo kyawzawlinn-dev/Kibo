@@ -1,0 +1,56 @@
+# --- Go build ---
+/backend/bin/
+/backend/build/
+/backend/coverage.out
+
+# --- Go workspace ---
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# --- Go modules ---
+/backend/vendor/
+
+# --- Private data ---
+/private/*
+
+# --- SQLite database ---
+*.db
+*.sqlite3
+
+# --- Node.js / React ---
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+/frontend/.env
+/frontend/.env.local
+/frontend/.env.development
+/frontend/.env.production
+
+# --- Logs ---
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- macOS system files ---
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# --- VSCode / IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Temporary files ---
+*.tmp
+*.bak
+*.old
+*.cache
