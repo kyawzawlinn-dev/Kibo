@@ -95,12 +95,25 @@ export async function sendMessage(message: string, chatID: number): Promise<Chat
 }
 
 /* -----------------------------
-   BODY RECORDS (unchanged)
+   BODY RECORDS
+   The backend uses snake_case JSON (record_type), the frontend
+   camelCase (recordType) — map between them here.
 ------------------------------ */
+function toBodyRecord(r: any): BodyRecord {
+  return {
+    id: r.id,
+    recordType: r.record_type,
+    value: r.value,
+    unit: r.unit,
+    timestamp: r.timestamp,
+  };
+}
+
 export async function getBodyRecords(): Promise<BodyRecord[]> {
   const res = await fetch(`${API_BASE_URL}/records/body`);
   if (!res.ok) throw new Error("Failed to fetch body records");
-  return res.json();
+  const data = await res.json();
+  return (data ?? []).map(toBodyRecord);
 }
 
 export async function addBodyRecord(
@@ -109,18 +122,56 @@ export async function addBodyRecord(
   const res = await fetch(`${API_BASE_URL}/records/body`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(record),
+    body: JSON.stringify({
+      record_type: record.recordType,
+      value: record.value,
+      unit: record.unit,
+    }),
   });
 
   if (!res.ok) throw new Error("Failed to add body record");
-  return res.json();
+  return toBodyRecord(await res.json());
 }
 
 /* -----------------------------
-   DIET RECORDS (placeholder)
+   DIET RECORDS
 ------------------------------ */
+function toDietRecord(r: any): DietRecord {
+  return {
+    id: r.id,
+    foodName: r.food_name,
+    calories: r.calories,
+    protein_g: r.protein,
+    carbs_g: r.carbs,
+    fat_g: r.fat,
+    timestamp: r.timestamp,
+  };
+}
+
 export async function getDietRecords(): Promise<DietRecord[]> {
-  return [];
+  const res = await fetch(`${API_BASE_URL}/records/diet`);
+  if (!res.ok) throw new Error("Failed to fetch diet records");
+  const data = await res.json();
+  return (data ?? []).map(toDietRecord);
+}
+
+export async function addDietRecord(
+  record: Omit<DietRecord, "id" | "timestamp">
+): Promise<DietRecord> {
+  const res = await fetch(`${API_BASE_URL}/records/diet`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      food_name: record.foodName,
+      calories: record.calories,
+      protein: record.protein_g,
+      carbs: record.carbs_g,
+      fat: record.fat_g,
+    }),
+  });
+
+  if (!res.ok) throw new Error("Failed to add diet record");
+  return toDietRecord(await res.json());
 }
 
 // import type { BodyRecord, ChatResponse, DietRecord } from "../types";

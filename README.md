@@ -52,7 +52,7 @@ The plan, in order:
 
 **Phase 1 — Lightweight foundation (in progress on this branch)**
 - [x] Replace Chroma + Docker with an embedded pure-Go vector store (no Docker at all)
-- [ ] Wire body/diet record API routes to the frontend
+- [x] Wire body/diet record API routes to the frontend
 - [ ] Per-chat conversation memory, rehydrated from the database across restarts
 - [ ] Merge classifier calls to cut per-message LLM round-trips (faster replies on weak hardware)
 - [ ] Embed the built frontend into the Go binary (`go:embed`) → **one executable, no Node required**

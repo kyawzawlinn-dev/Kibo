@@ -22,6 +22,12 @@ func NewRouter(repo *bodyrecord.Repository, ragService *chat2.RAGService, agent 
 	r.HandleFunc("/api/chat/{chat_id}", handlers.GetChat).Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/chat/{chat_id}", handlers.DeleteChat).Methods("DELETE", "OPTIONS")
 
+	// --- HEALTH RECORD ROUTES ---
+	r.HandleFunc("/api/records/body", handlers.HandleGetBodyRecords).Methods("GET", "OPTIONS")
+	r.HandleFunc("/api/records/body", handlers.HandleCreateBodyRecord).Methods("POST", "OPTIONS")
+	r.HandleFunc("/api/records/diet", handlers.HandleGetDietRecords).Methods("GET", "OPTIONS")
+	r.HandleFunc("/api/records/diet", handlers.HandleCreateDietRecord).Methods("POST", "OPTIONS")
+
 	// --- STATIC FILES ---
 	staticDir := "../frontend/build"
 	fs := http.FileServer(http.Dir(staticDir))

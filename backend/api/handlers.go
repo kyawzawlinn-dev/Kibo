@@ -411,14 +411,17 @@ func (h *Handlers) HandleCreateBodyRecord(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Set server-side timestamp
+	// Set server-side fields
+	record.UserID = 2 // demo user
 	record.Timestamp = time.Now()
 
-	if _, err := h.repo.AddBodyRecord(r.Context(), record); err != nil {
+	id, err := h.repo.AddBodyRecord(r.Context(), record)
+	if err != nil {
 		log.Printf("ERROR: Failed to create body record: %v", err)
 		http.Error(w, "Failed to save record", http.StatusInternalServerError)
 		return
 	}
+	record.ID = id
 
 	writeJSON(w, http.StatusCreated, record)
 }
@@ -449,14 +452,17 @@ func (h *Handlers) HandleCreateDietRecord(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Set server-side timestamp
+	// Set server-side fields
+	record.UserID = 2 // demo user
 	record.Timestamp = time.Now()
 
-	if _, err := h.repo.AddDietRecord(r.Context(), record); err != nil {
+	id, err := h.repo.AddDietRecord(r.Context(), record)
+	if err != nil {
 		log.Printf("ERROR: Failed to create diet record: %v", err)
 		http.Error(w, "Failed to save record", http.StatusInternalServerError)
 		return
 	}
+	record.ID = id
 
 	writeJSON(w, http.StatusCreated, record)
 }

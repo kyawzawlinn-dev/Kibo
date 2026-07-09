@@ -67,7 +67,7 @@ export default function RecordChart({ data, type, unit }: RecordChartProps) {
                             borderRadius: '8px',
                             padding: '8px'
                         }}
-                        formatter={(value, name) => [`${value} ${unit}`, 'Value']}
+                        formatter={(value) => [`${value} ${unit}`, 'Value']}
                         labelFormatter={(timestamp) => `Date: ${new Date(timestamp).toLocaleDateString()}`}
                     />
                     
