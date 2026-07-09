@@ -18,12 +18,12 @@ import (
 // Reads files from a folder, optionally splits large files into chunks,
 // generates stable IDs, attaches metadata, and indexes into Chroma.
 type KnowledgeLoader struct {
-	VectorStore *ChromaVectorStore
+	VectorStore *VectorStore
 	ChunkSize   int // number of characters per chunk
 }
 
 // NewKnowledgeLoader creates a new loader
-func NewKnowledgeLoader(store *ChromaVectorStore, chunkSize int) *KnowledgeLoader {
+func NewKnowledgeLoader(store *VectorStore, chunkSize int) *KnowledgeLoader {
 	return &KnowledgeLoader{
 		VectorStore: store,
 		ChunkSize:   chunkSize,
@@ -69,6 +69,13 @@ func (kl *KnowledgeLoader) loadFile(ctx context.Context, filePath string) error 
 
 	for i, chunk := range chunks {
 		stableID := generateStableID(filePath, i, chunk)
+
+		// stable IDs are derived from content, so an existing ID means the
+		// chunk is unchanged — skip it to avoid re-embedding on every startup
+		if kl.VectorStore.Contains(ctx, stableID) {
+			continue
+		}
+
 		metadata := map[string]string{
 			"source":     filepath.Base(filePath),
 			"chunkIndex": fmt.Sprintf("%d", i),

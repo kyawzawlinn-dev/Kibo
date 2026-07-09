@@ -54,3 +54,9 @@ yarn-error.log*
 *.bak
 *.old
 *.cache
+
+# --- Generated vector store (embeddings cache) ---
+/data/kibo-vectors/
+
+# --- Scratch notes ---
+/tmp.txt

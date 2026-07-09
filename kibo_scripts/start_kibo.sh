@@ -3,33 +3,7 @@
 echo "🚀 Starting Kibo🌿 Environment..."
 
 #########################################
-# 1. CHECK DOCKER
-#########################################
-echo "🔍 Checking Docker..."
-
-if ! docker info >/dev/null 2>&1; then
-  echo "🐳 Docker not running. Starting Docker Desktop..."
-  open -a Docker
-  echo "⏳ Waiting for Docker to start..."
-  until docker info >/dev/null 2>&1; do sleep 2; done
-fi
-echo "✅ Docker is running."
-
-
-#########################################
-# 2. CHECK & START CHROMA CONTAINER
-#########################################
-CHROMA_CONTAINER=$(docker ps --filter "name=kibo-chroma" --format "{{.Names}}")
-
-if [ "$CHROMA_CONTAINER" = "kibo-chroma" ]; then
-  echo "🟦 Chroma is already running."
-else
-  echo "🟦 Kibo-chroma will be created in main"
-fi
-
-
-#########################################
-# 3. CHECK & START OLLAMA SERVICE
+# 1. CHECK & START OLLAMA SERVICE
 #########################################
 echo "🔍 Checking Ollama service..."
 
@@ -41,17 +15,24 @@ else
   sleep 3
 fi
 
-# Check if model exists
-if ollama list | grep -q "llama3"; then
-  echo "🧠 Model llama3 is available."
+# Check required models
+if ollama list | grep -q "llama3.2"; then
+  echo "🧠 Chat model llama3.2 is available."
 else
-  echo "⬇️ Pulling Llama3 model..."
-  ollama pull llama3
+  echo "⬇️ Pulling llama3.2 model..."
+  ollama pull llama3.2
+fi
+
+if ollama list | grep -q "nomic-embed-text"; then
+  echo "🧠 Embedding model nomic-embed-text is available."
+else
+  echo "⬇️ Pulling nomic-embed-text model..."
+  ollama pull nomic-embed-text
 fi
 
 
 #########################################
-# 4. START BACKEND (Go)
+# 2. START BACKEND (Go)
 #########################################
 echo "🟩 Starting Go backend server..."
 
@@ -69,7 +50,7 @@ fi
 
 
 #########################################
-# 5. START FRONTEND (React)
+# 3. START FRONTEND (React)
 #########################################
 echo "🟦 Starting React frontend..."
 

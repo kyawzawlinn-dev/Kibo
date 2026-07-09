@@ -51,7 +51,7 @@ Kibo is under active development. What works today:
 The plan, in order:
 
 **Phase 1 — Lightweight foundation (in progress on this branch)**
-- [ ] Replace Chroma + Docker with an embedded pure-Go vector store (no Docker at all)
+- [x] Replace Chroma + Docker with an embedded pure-Go vector store (no Docker at all)
 - [ ] Wire body/diet record API routes to the frontend
 - [ ] Per-chat conversation memory, rehydrated from the database across restarts
 - [ ] Merge classifier calls to cut per-message LLM round-trips (faster replies on weak hardware)
@@ -73,10 +73,10 @@ The plan, in order:
 
 ## Running it today (development setup)
 
-Requirements: Go, Node.js, Docker (temporary — being removed in Phase 1), and [Ollama](https://ollama.com) with `llama3.2` and `nomic-embed-text` pulled.
+Requirements: Go, Node.js, and [Ollama](https://ollama.com) with `llama3.2` and `nomic-embed-text` pulled. No Docker needed.
 
 ```bash
-# terminal 1 — backend (auto-starts the Chroma container)
+# terminal 1 — backend
 cd backend && go run main.go
 
 # terminal 2 — frontend

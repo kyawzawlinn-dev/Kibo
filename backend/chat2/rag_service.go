@@ -14,12 +14,12 @@ import (
 type RAGService struct {
 	repo        *bodyrecord.Repository
 	ollama      *OllamaClient
-	vectorStore *ChromaVectorStore
+	vectorStore *VectorStore
 	embedModel  string
 	chatModel   string
 }
 
-func NewRAGService(repo *bodyrecord.Repository, ollama *OllamaClient, vectorStore *ChromaVectorStore) *RAGService {
+func NewRAGService(repo *bodyrecord.Repository, ollama *OllamaClient, vectorStore *VectorStore) *RAGService {
 	return &RAGService{
 		repo:        repo,
 		ollama:      ollama,
