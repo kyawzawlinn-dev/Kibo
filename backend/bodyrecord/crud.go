@@ -158,9 +158,11 @@ func (r *Repository) AddChatHistory(ctx context.Context, chatID int64, userID *i
 }
 
 func (r *Repository) GetChatHistory(ctx context.Context, chatID int64, limit int) ([]ChatHistory, error) {
+	// Order by id: messages within a chat can share a timestamp, and
+	// ids are strictly insertion-ordered.
 	rows, err := r.DB.QueryContext(
 		ctx,
-		"SELECT id, chat_id, user_id, role, message, timestamp FROM chat_history WHERE chat_id = ? ORDER BY timestamp ASC LIMIT ?",
+		"SELECT id, chat_id, user_id, role, message, timestamp FROM chat_history WHERE chat_id = ? ORDER BY id ASC LIMIT ?",
 		chatID, limit,
 	)
 	if err != nil {
@@ -168,6 +170,36 @@ func (r *Repository) GetChatHistory(ctx context.Context, chatID int64, limit int
 	}
 	defer rows.Close()
 
+	return scanChatHistory(rows)
+}
+
+// GetRecentChatHistory returns the LAST `limit` messages of a chat in
+// chronological order — the conversation window the agent feeds to the
+// LLM. (GetChatHistory with a limit returns the oldest messages instead.)
+func (r *Repository) GetRecentChatHistory(ctx context.Context, chatID int64, limit int) ([]ChatHistory, error) {
+	rows, err := r.DB.QueryContext(
+		ctx,
+		"SELECT id, chat_id, user_id, role, message, timestamp FROM chat_history WHERE chat_id = ? ORDER BY id DESC LIMIT ?",
+		chatID, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	history, err := scanChatHistory(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	// reverse newest-first into chronological order
+	for i, j := 0, len(history)-1; i < j; i, j = i+1, j-1 {
+		history[i], history[j] = history[j], history[i]
+	}
+	return history, nil
+}
+
+func scanChatHistory(rows *sql.Rows) ([]ChatHistory, error) {
 	var history []ChatHistory
 	for rows.Next() {
 		var m ChatHistory
@@ -176,7 +208,7 @@ func (r *Repository) GetChatHistory(ctx context.Context, chatID int64, limit int
 		}
 		history = append(history, m)
 	}
-	return history, nil
+	return history, rows.Err()
 }
 
 // ListChatsByUser returns chats owned by a user (id + title + updated_at)

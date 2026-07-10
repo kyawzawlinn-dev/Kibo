@@ -1,134 +1,108 @@
 package chat2
 
 import (
-	logger "Kibo/backend/kibo_utils"
 	"context"
 	"fmt"
 	"strings"
+
+	"Kibo/backend/bodyrecord"
+	logger "Kibo/backend/kibo_utils"
 )
 
-// ChatAgent coordinates intent, severity, memory and RAG
+// historyWindow is how many recent messages form the conversation
+// context sent to the LLM.
+const historyWindow = 20
+
+// ChatAgent answers user messages: it classifies the message, loads the
+// recent conversation from the database, and routes through RAG when
+// the knowledge base can help.
+//
+// Conversation memory is the chat_history table itself — per chat by
+// construction and it survives restarts. No in-RAM state to sync.
 type ChatAgent struct {
-	rag      *RAGService
-	ollama   *OllamaClient
-	intent   *IntentDetector
-	service  *ServiceClassifier
-	memory   *MemoryManager
-	memLimit int
+	rag        *RAGService
+	ollama     *OllamaClient
+	classifier *Classifier
+	repo       *bodyrecord.Repository
 }
 
-// NewChatAgent(rag, ollama) -> *ChatAgent
-func NewChatAgent(rag *RAGService, ollama *OllamaClient) *ChatAgent {
+func NewChatAgent(rag *RAGService, ollama *OllamaClient, repo *bodyrecord.Repository) *ChatAgent {
 	return &ChatAgent{
-		rag:      rag,
-		ollama:   ollama,
-		intent:   NewIntentDetector(ollama),
-		service:  NewServiceClassifier(ollama),
-		memory:   globalMemory,
-		memLimit: 40,
+		rag:        rag,
+		ollama:     ollama,
+		classifier: NewClassifier(ollama),
+		repo:       repo,
 	}
 }
 
-// Refine_prompt returns answer for user; orchestrates flow
-// 1. detect intent and severity
-// 2. get memory and add user message
-// 3. build refined prompt
-// 4. decide whether to use RAG
-// 5. call RAGService
-// 6. save assistant reply to memory
-func (a *ChatAgent) Refine_prompt(ctx context.Context, userID int64, message string) (string, error) {
-	// 1. detect intent and severity
-	intentLabel, _ := a.intent.Detect(ctx, message)
-	serviceLabel, _ := a.service.Classify(ctx, message)
+// Answer generates the assistant reply for the latest user message in a
+// chat. The caller has already saved that message to chat_history, so
+// the loaded history includes it.
+func (a *ChatAgent) Answer(ctx context.Context, userID, chatID int64, message string) (string, error) {
+	cl := a.classifier.Classify(ctx, message)
+	logger.Info("[agent.go/Answer]:\tintent=%s service=%s useRAG=%v", cl.Intent, cl.Service, cl.NeedsRAG())
 
-	logger.Info(fmt.Sprintf("[Chat_Agent/Refine_prompt]: Building master prompt with INTENT=%s and SERVICE=%s", intentLabel, serviceLabel))
-
-	// 2. memory
-	cm := a.memory.getOrCreate(userID)
-	cm.Add("user", message)
-	memSnapshot := cm.Snapshot()
-
-	logger.Info(fmt.Sprintf("[Chat_Agent/Refine_prompt]: Conversation memory:\n%s\n and user message: %s", formatMemory(memSnapshot), message))
-
-	// 3. build agent prompt
-	agentPrompt := a.buildRefinedPrompt(intentLabel, serviceLabel, memSnapshot, message)
-
-	// 4. decide whether to use RAG
-	useRAG := true
-	if intentLabel == "GENERAL" {
-		useRAG = false
+	history, err := a.repo.GetRecentChatHistory(ctx, chatID, historyWindow)
+	if err != nil {
+		logger.Warn("[agent.go/Answer]:\tloading chat history: %v", err)
+		// degrade gracefully: answer without conversation context
+		history = nil
 	}
 
-	// 5. call RAGService
-	resp, err := a.rag.Ask(ctx, agentPrompt, userID, useRAG, intentLabel, serviceLabel)
+	prompt := buildPrompt(cl, history, message)
+
+	resp, err := a.rag.Ask(ctx, prompt, userID, cl.NeedsRAG(), cl.Intent, cl.Service)
 	if err != nil {
 		return "", fmt.Errorf("agent failed: %w", err)
 	}
-
-	// 6. save assistant reply to memory
-	cm.Add("assistant", resp)
-
 	return resp, nil
 }
 
-// buildRefinedPrompt merges memory, intent, severity, and user question and returns a single large prompt
-func (a *ChatAgent) buildRefinedPrompt(intent, severity string, memory []string, message string) string {
-	memText := "No previous messages."
-	if len(memory) > 0 {
-		memText = "- " + formatMemory(memory)
+// buildPrompt merges the classification, conversation history, and the
+// current question into the prompt the RAG service augments.
+func buildPrompt(cl Classification, history []bodyrecord.ChatHistory, message string) string {
+	var conv strings.Builder
+	for _, m := range history {
+		conv.WriteString(m.Role)
+		conv.WriteString(": ")
+		conv.WriteString(m.Message)
+		conv.WriteString("\n")
+	}
+	if conv.Len() == 0 {
+		// history unavailable — fall back to just the current message
+		conv.WriteString("user: ")
+		conv.WriteString(message)
+		conv.WriteString("\n")
 	}
 
-	sys := `You are Kibo, an offline health assistant. Be concise, helpful, and prioritize user safety.`
-
-	return fmt.Sprintf(`%s
-
-DETECTED_INTENT: %s
+	return fmt.Sprintf(`DETECTED_INTENT: %s
 DETECTED_SERVICE: %s
 
-CONVERSATION_MEMORY:
-%s
-
-USER_MESSAGE:
-%s
-
-Please answer clearly.`,
-		sys,
-		intent,
-		severity,
-		memText,
-		message,
+CONVERSATION (oldest first; answer the last user message):
+%s`,
+		cl.Intent,
+		cl.Service,
+		conv.String(),
 	)
 }
 
+// GenerateTitle produces a short chat title from the first message.
 func (a *ChatAgent) GenerateTitle(ctx context.Context, userMsg string) (string, error) {
-	logger.Info(fmt.Sprintf("[agent.go/GenerateTitle]:\tGenerating title for message: %s", userMsg))
-	prompt := fmt.Sprintf(`
-    Generate a short title (max 4 words) summarizing this conversation topic:
-    "%s"
-    Respond with only the title.
-    `, userMsg)
+	prompt := fmt.Sprintf(
+		"Generate a short title (max 4 words) summarizing this conversation topic:\n%q\nRespond with only the title, no quotes.",
+		userMsg,
+	)
 
-	resp, err := a.ollama.Generate(ctx, "llama3.2:latest", prompt)
+	resp, err := a.ollama.Generate(ctx, ChatModel, prompt)
 	if err != nil {
-		logger.Error(fmt.Sprintf("[agent.go/GenerateTitle]:\terror: %v", err))
+		logger.Error("[agent.go/GenerateTitle]:\terror: %v", err)
 		return "", err
 	}
 
-	logger.Info(fmt.Sprintf("[agent.go/GenerateTitle]:\tgenerated title: %s", resp))
-	// Take only the first line in case the model returns multiple lines
-	title := strings.Split(resp, "\n")[0]
-	title = strings.TrimSpace(title)
+	// Take only the first line and strip wrapping quotes the model
+	// tends to add despite instructions
+	title := strings.TrimSpace(strings.Split(resp, "\n")[0])
+	title = strings.Trim(title, `"'`)
+	logger.Info("[agent.go/GenerateTitle]:\tgenerated title: %s", title)
 	return title, nil
-}
-
-// formatMemory converts memory slice to a single string
-func formatMemory(mem []string) string {
-	if len(mem) == 0 {
-		return ""
-	}
-	out := ""
-	for _, m := range mem {
-		out += m + "\n"
-	}
-	return out
 }

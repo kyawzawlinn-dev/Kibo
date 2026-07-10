@@ -20,7 +20,7 @@ export interface ChatHistoryItem {
 export interface ChatHistoryResponse {
   chat_id: number;
   title: string;
-  message: ChatHistoryItem[];
+  messages: ChatHistoryItem[];
 }
 
 const API_BASE_URL = "http://localhost:8080/api";

@@ -70,9 +70,7 @@ export default function App() {
     try {
       const data = await getChatHistory(id);
 
-      console.log("[DEBUG] /chat response:", data);
-
-      const rawMsgs =  data.message ?? [];
+      const rawMsgs = data.messages ?? [];
 
       const mapped: Message[] = rawMsgs.map((m: any, idx: number) => ({
         id: m.id ?? Date.now() + idx,

@@ -15,10 +15,7 @@ import (
 	logger "Kibo/backend/kibo_utils"
 )
 
-const (
-	ollamaBaseURL = "http://localhost:11434"
-	embedModel    = "nomic-embed-text"
-)
+const ollamaBaseURL = "http://localhost:11434"
 
 func main() {
 	ctx := context.Background()
@@ -38,7 +35,7 @@ func main() {
 
 	// Embedded vector store (chromem-go) — persists next to the SQLite DB,
 	// no external server or Docker required
-	vectorStore, err := chat2.NewVectorStore("../data/kibo-vectors", ollamaBaseURL, embedModel)
+	vectorStore, err := chat2.NewVectorStore("../data/kibo-vectors", ollamaBaseURL, chat2.EmbedModel)
 	if err != nil {
 		log.Fatalf("Failed to open vector store: %v", err)
 	}
@@ -52,10 +49,10 @@ func main() {
 
 	// RAG + Agent
 	ragService := chat2.NewRAGService(repo, ollamaClient, vectorStore)
-	agent := chat2.NewChatAgent(ragService, ollamaClient)
+	agent := chat2.NewChatAgent(ragService, ollamaClient, repo)
 
 	// Router
-	router := api.NewRouter(repo, ragService, agent)
+	router := api.NewRouter(repo, agent)
 
 	corsHandler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},
