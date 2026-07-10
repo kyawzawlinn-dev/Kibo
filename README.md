@@ -41,10 +41,12 @@ Ollama is an engine; Kibo is the vehicle. Raw Ollama has no memory of your healt
 
 Kibo is under active development. What works today:
 
-- ✅ Multi-chat conversations with a local LLM (auto-titled, stored in SQLite)
-- ✅ RAG pipeline: markdown knowledge base → chunked → embedded → vector search → grounded answers
-- ✅ Intent detection and answer routing
-- ✅ Body record tracking with charts (weight, sleep, activity, water)
+- ✅ **Single-binary app**: one Go executable serves the UI and API — no Docker, no Node at runtime
+- ✅ Multi-chat conversations with a local LLM (auto-titled, per-chat memory that survives restarts)
+- ✅ RAG pipeline with **source citations** and a relevance threshold — answers grounded in a 14-article offline health library
+- ✅ **Log health data by chatting**: "yesterday I slept 5 hours and drank 2L" → saved records
+- ✅ **Emergency mode**: 8 first-aid cards embedded in the binary; red-flag chat messages get the card in ~13 ms, no LLM involved
+- ✅ Body record tracking: date-aware entries, combined trends chart, paginated history
 
 ## Roadmap
 
@@ -62,7 +64,7 @@ The plan, in order:
 - [x] Log health data through chat ("I weighed 68kg today" → saved record)
 - [x] Emergency mode: instant, deterministic first-aid cards — no LLM in the loop
 - [x] Answers cite their knowledge-base source
-- [ ] Expanded curated offline health library (first aid, common conditions, medications)
+- [x] Expanded curated offline health library (diarrhea/ORS, mosquito-borne fevers, wound care, respiratory infections, pregnancy, child nutrition, water safety, mental wellbeing)
 
 **Phase 3 — Built for the field**
 - [ ] LAN sharing: one laptop serves the whole household or clinic over local Wi-Fi
