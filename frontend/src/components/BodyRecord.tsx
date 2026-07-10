@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { BodyRecord as BodyRecordType } from "../types";
-import { getBodyRecords, addBodyRecord } from "../services/api";
-import { PlusCircle } from "lucide-react";
+import { getBodyRecords, addBodyRecord, importRecordsCSV, exportRecordsUrl } from "../services/api";
+import { Download, PlusCircle, Upload } from "lucide-react";
 import RecordChart from "./RecordChart"; // Import the new chart component
 
 // List of all supported record types for the form and trend charts.
@@ -35,6 +35,8 @@ export default function BodyRecord() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const importInput = useRef<HTMLInputElement>(null);
 
   // --- Fetch Data on Load ---
   useEffect(() => {
@@ -270,9 +272,56 @@ export default function BodyRecord() {
     </div>
   );
 
+  const handleImportFile = async (file: File) => {
+    setImportMsg(null);
+    try {
+      const csv = await file.text();
+      const res = await importRecordsCSV(csv);
+      setImportMsg(
+        `Imported ${res.imported} records` +
+          (res.skipped_duplicates ? `, ${res.skipped_duplicates} duplicates skipped` : "") +
+          (res.skipped_invalid ? `, ${res.skipped_invalid} invalid rows skipped` : "") +
+          "."
+      );
+      if (res.imported > 0) fetchRecords();
+    } catch (err) {
+      setImportMsg(err instanceof Error ? err.message : "Import failed.");
+    }
+  };
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-medium text-night-50 mb-6 border-b border-night-800 pb-3">Health and body record</h2>
+      <div className="flex items-center justify-between border-b border-night-800 pb-3 mb-2">
+        <h2 className="text-2xl font-medium text-night-50">Health and body record</h2>
+        <div className="flex gap-2">
+          <a
+            href={exportRecordsUrl}
+            download
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-night-700 text-sm text-night-200 hover:bg-night-800"
+          >
+            <Download className="w-3.5 h-3.5" /> Export CSV
+          </a>
+          <button
+            onClick={() => importInput.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-night-700 text-sm text-night-200 hover:bg-night-800"
+          >
+            <Upload className="w-3.5 h-3.5" /> Import CSV
+          </button>
+          <input
+            ref={importInput}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleImportFile(f);
+              e.target.value = "";
+            }}
+          />
+        </div>
+      </div>
+      {importMsg && <p className="text-sm text-mint-soft mb-4">{importMsg}</p>}
+      <div className="mb-4" />
       
       {RecordForm}
       

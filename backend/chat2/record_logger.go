@@ -25,12 +25,7 @@ func NewRecordLogger(ollama *OllamaClient, repo *bodyrecord.Repository) *RecordL
 }
 
 // defaultUnits also defines which record types may be logged via chat.
-var defaultUnits = map[string]string{
-	"Weight":   "kg",
-	"Sleep":    "hours",
-	"Activity": "minutes",
-	"Water":    "L",
-}
+var defaultUnits = bodyrecord.DefaultUnits
 
 const extractPrompt = `Extract the health measurements the user wants to record.
 

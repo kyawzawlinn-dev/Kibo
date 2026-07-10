@@ -97,6 +97,31 @@ export async function sendMessage(message: string, chatID: number): Promise<Chat
 }
 
 /* -----------------------------
+   CSV EXPORT / IMPORT
+------------------------------ */
+export const exportRecordsUrl = `${API_BASE_URL}/records/export.csv`;
+
+export interface ImportResult {
+  imported: number;
+  skipped_duplicates: number;
+  skipped_invalid: number;
+}
+
+export async function importRecordsCSV(csv: string): Promise<ImportResult> {
+  const res = await fetch(`${API_BASE_URL}/records/import`, {
+    method: "POST",
+    headers: { "Content-Type": "text/csv" },
+    body: csv,
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(txt.trim() || "Failed to import CSV");
+  }
+  return res.json();
+}
+
+/* -----------------------------
    LAN SHARING
 ------------------------------ */
 export async function getShareInfo(): Promise<{ urls: string[] }> {

@@ -1,12 +1,14 @@
 package api
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"Kibo/backend/bodyrecord"
@@ -208,6 +210,157 @@ func (h *Handlers) SendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, ChatResponse{Reply: reply, Title: title})
+}
+
+// --- CSV export/import ---
+
+// HandleExportRecordsCSV streams all body records as a CSV download —
+// the backup, migration, and spreadsheet format.
+func (h *Handlers) HandleExportRecordsCSV(w http.ResponseWriter, r *http.Request) {
+	records, err := h.repo.GetBodyRecords(r.Context(), demoUserID)
+	if err != nil {
+		logger.Error("[handlers.go/HandleExportRecordsCSV]:\t%v", err)
+		http.Error(w, "Failed to load records", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition",
+		fmt.Sprintf(`attachment; filename="kibo-records-%s.csv"`, time.Now().Format("2006-01-02")))
+
+	cw := csv.NewWriter(w)
+	cw.Write([]string{"date", "type", "value", "unit"})
+	// chronological order (the query returns newest first)
+	for i := len(records) - 1; i >= 0; i-- {
+		rec := records[i]
+		cw.Write([]string{
+			rec.Timestamp.Format("2006-01-02"),
+			rec.RecordType,
+			strconv.FormatFloat(rec.Value, 'f', -1, 64),
+			rec.Unit,
+		})
+	}
+	cw.Flush()
+}
+
+// importResult reports what happened to each row of an imported CSV.
+type importResult struct {
+	Imported          int `json:"imported"`
+	SkippedDuplicates int `json:"skipped_duplicates"`
+	SkippedInvalid    int `json:"skipped_invalid"`
+}
+
+// HandleImportRecordsCSV imports records from a CSV body with columns
+// date,type,value,unit (any order; unit optional). Duplicate rows —
+// same type, day, and value as an existing record — are skipped, so
+// re-importing a backup is always safe.
+func (h *Handlers) HandleImportRecordsCSV(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	reader := csv.NewReader(http.MaxBytesReader(w, r.Body, 5<<20))
+	reader.FieldsPerRecord = -1
+
+	header, err := reader.Read()
+	if err != nil {
+		http.Error(w, "Empty or unreadable CSV", http.StatusBadRequest)
+		return
+	}
+	col := map[string]int{}
+	for i, name := range header {
+		col[strings.ToLower(strings.TrimSpace(name))] = i
+	}
+	if _, ok := col["record_type"]; ok {
+		col["type"] = col["record_type"]
+	}
+	for _, required := range []string{"date", "type", "value"} {
+		if _, ok := col[required]; !ok {
+			http.Error(w, "CSV needs date, type, and value columns", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// existing records index for deduplication
+	existing, err := h.repo.GetBodyRecords(ctx, demoUserID)
+	if err != nil {
+		logger.Error("[handlers.go/HandleImportRecordsCSV]:\t%v", err)
+		http.Error(w, "Failed to load records", http.StatusInternalServerError)
+		return
+	}
+	seen := map[string]bool{}
+	recordKey := func(recType string, t time.Time, value float64) string {
+		return fmt.Sprintf("%s|%s|%.4f", recType, t.Format("2006-01-02"), value)
+	}
+	for _, rec := range existing {
+		seen[recordKey(rec.RecordType, rec.Timestamp, rec.Value)] = true
+	}
+
+	var result importResult
+	field := func(row []string, name string) string {
+		if i, ok := col[name]; ok && i < len(row) {
+			return strings.TrimSpace(row[i])
+		}
+		return ""
+	}
+
+	for {
+		row, err := reader.Read()
+		if err != nil {
+			break
+		}
+
+		recType := normalizeRecordType(field(row, "type"))
+		defUnit, known := bodyrecord.DefaultUnits[recType]
+		value, verr := strconv.ParseFloat(field(row, "value"), 64)
+		when, derr := parseImportDate(field(row, "date"))
+		if !known || verr != nil || derr != nil || value <= 0 || value > 100000 {
+			result.SkippedInvalid++
+			continue
+		}
+
+		if seen[recordKey(recType, when, value)] {
+			result.SkippedDuplicates++
+			continue
+		}
+
+		unit := field(row, "unit")
+		if unit == "" {
+			unit = defUnit
+		}
+
+		if _, err := h.repo.AddBodyRecord(ctx, bodyrecord.BodyRecord{
+			UserID:     demoUserID,
+			RecordType: recType,
+			Value:      value,
+			Unit:       unit,
+			Timestamp:  when,
+		}); err != nil {
+			logger.Error("[handlers.go/HandleImportRecordsCSV]:\tsaving row: %v", err)
+			result.SkippedInvalid++
+			continue
+		}
+		seen[recordKey(recType, when, value)] = true
+		result.Imported++
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+// normalizeRecordType maps "weight"/"WEIGHT" to "Weight".
+func normalizeRecordType(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" {
+		return ""
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// parseImportDate accepts plain dates and RFC3339 timestamps; plain
+// dates land at noon local so the calendar day is timezone-stable.
+func parseImportDate(s string) (time.Time, error) {
+	if t, err := time.ParseInLocation("2006-01-02", s, time.Local); err == nil {
+		return t.Add(12 * time.Hour), nil
+	}
+	return time.Parse(time.RFC3339, s)
 }
 
 // --- Share handlers ---

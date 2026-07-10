@@ -12,6 +12,16 @@ type User struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
+// DefaultUnits maps the supported record types to their units — the
+// single source of truth for what Kibo tracks (used by chat logging
+// and CSV import).
+var DefaultUnits = map[string]string{
+	"Weight":   "kg",
+	"Sleep":    "hours",
+	"Activity": "minutes",
+	"Water":    "L",
+}
+
 type BodyRecord struct {
 	ID         int64     `json:"id"`
 	UserID     int64     `json:"user_id"`
