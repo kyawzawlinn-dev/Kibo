@@ -36,6 +36,17 @@ func NewVectorStore(path, ollamaBaseURL, embedModel string) (*VectorStore, error
 	return &VectorStore{collection: col}, nil
 }
 
+// DeleteBySource removes every chunk that came from the given source
+// file — used when a library article is edited or deleted so search
+// never returns stale content.
+func (s *VectorStore) DeleteBySource(ctx context.Context, source string) error {
+	err := s.collection.Delete(ctx, map[string]string{"source": source}, nil)
+	if err != nil {
+		return fmt.Errorf("deleting chunks of %s: %w", source, err)
+	}
+	return nil
+}
+
 // Contains reports whether a document with this ID is already indexed.
 // Used to skip re-embedding unchanged knowledge base chunks on startup.
 func (s *VectorStore) Contains(ctx context.Context, id string) bool {

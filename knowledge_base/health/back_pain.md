@@ -15,3 +15,4 @@ Most back pain improves within a few weeks with simple self-care.
 - There is fever, unexplained weight loss, or night pain that does not ease
 - You lose control of bladder or bowels — this is an emergency
 - The pain has not improved after 4 weeks of self-care
+- Gentle stretching in the morning can ease stiffness

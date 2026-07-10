@@ -57,6 +57,13 @@ func (kl *KnowledgeLoader) LoadFolder(ctx context.Context, folderPath string) er
 	return nil
 }
 
+// RemoveSource drops every indexed chunk that came from the given
+// source file (base filename). Used when an article is edited or
+// deleted at runtime.
+func (kl *KnowledgeLoader) RemoveSource(ctx context.Context, source string) error {
+	return kl.VectorStore.DeleteBySource(ctx, source)
+}
+
 // IndexFile reads a file, splits it into chunks, generates stable IDs,
 // and indexes it. Also used to make articles added at runtime (via the
 // Library page) searchable without a restart.

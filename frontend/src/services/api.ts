@@ -122,6 +122,30 @@ export async function addLibraryArticle(
   return res.json();
 }
 
+export async function updateLibraryArticle(
+  id: string,
+  content: string
+): Promise<LibraryArticle> {
+  const res = await fetch(`${API_BASE_URL}/library/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(txt.trim() || "Failed to update article");
+  }
+  return res.json();
+}
+
+export async function deleteLibraryArticle(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/library/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Failed to delete article");
+}
+
 /* -----------------------------
    EMERGENCY FIRST-AID CARDS
 ------------------------------ */

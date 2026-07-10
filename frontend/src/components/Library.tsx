@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, BookOpen, Plus, Search, Upload } from "lucide-react";
-import { getLibraryArticles, addLibraryArticle } from "../services/api";
+import { ArrowLeft, BookOpen, Edit3, Plus, Search, Trash2, Upload } from "lucide-react";
+import {
+  getLibraryArticles,
+  addLibraryArticle,
+  updateLibraryArticle,
+  deleteLibraryArticle,
+} from "../services/api";
 import type { LibraryArticle } from "../types";
 
 /**
@@ -38,6 +43,8 @@ export default function Library() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<LibraryArticle | null>(null);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
   const [saving, setSaving] = useState(false);
@@ -88,6 +95,80 @@ export default function Library() {
     }
   };
 
+  const handleUpdate = async () => {
+    if (!selected) return;
+    setError(null);
+    setSaving(true);
+    try {
+      const article = await updateLibraryArticle(selected.id, editContent);
+      setArticles((prev) =>
+        prev
+          .map((a) => (a.id === article.id ? article : a))
+          .sort((a, b) => a.title.localeCompare(b.title))
+      );
+      setSelected(article);
+      setEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update article.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selected) return;
+    if (!window.confirm(`Delete "${selected.title}"? Kibo will no longer use it in answers.`)) return;
+    setError(null);
+    try {
+      await deleteLibraryArticle(selected.id);
+      setArticles((prev) => prev.filter((a) => a.id !== selected.id));
+      setSelected(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete article.");
+    }
+  };
+
+  // --- Edit view ---
+  if (selected && editing) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <button
+          onClick={() => setEditing(false)}
+          className="flex items-center gap-2 text-sm text-night-400 hover:text-night-50 mb-4"
+        >
+          <ArrowLeft className="w-4 h-4" /> Cancel editing
+        </button>
+        <div className="bg-night-850 border border-night-800 rounded-xl p-6 space-y-4">
+          <div>
+            <h2 className="text-xl font-medium text-night-50">Edit: {selected.title}</h2>
+            <p className="text-xs text-night-500 mt-1">
+              The citation name ({selected.id}) stays the same. Change the "# " heading to rename the displayed title.
+            </p>
+          </div>
+
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={16}
+            className="w-full p-3 bg-night-900 border border-night-700 text-night-50 rounded-lg focus:outline-none focus:border-mint font-mono text-sm"
+          />
+
+          {error && <p className="text-sm text-red-400">{error}</p>}
+
+          <button
+            onClick={handleUpdate}
+            disabled={saving || !editContent.trim()}
+            className={`px-4 py-2 rounded-lg bg-mint text-mint-ink font-medium ${
+              saving || !editContent.trim() ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"
+            }`}
+          >
+            {saving ? "Saving & reindexing…" : "Save changes"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // --- Reading view ---
   if (selected) {
     return (
@@ -99,8 +180,27 @@ export default function Library() {
           <ArrowLeft className="w-4 h-4" /> Back to library
         </button>
         <div className="bg-night-850 border border-night-800 rounded-xl p-6">
-          <h2 className="text-xl font-medium text-night-50 mb-1">{selected.title}</h2>
+          <div className="flex items-start justify-between gap-4 mb-1">
+            <h2 className="text-xl font-medium text-night-50">{selected.title}</h2>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => { setEditContent(selected.content); setEditing(true); setError(null); }}
+                title="Edit article"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-night-700 text-sm text-night-200 hover:bg-night-800"
+              >
+                <Edit3 className="w-3.5 h-3.5" /> Edit
+              </button>
+              <button
+                onClick={handleDelete}
+                title="Delete article"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-night-700 text-sm text-night-200 hover:bg-night-800 hover:text-red-400"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
+            </div>
+          </div>
           <p className="text-xs text-night-500 mb-4">Cited in chat as: {selected.id}</p>
+          {error && <p className="text-sm text-red-400 mb-3">{error}</p>}
           <ArticleBody content={selected.content} />
         </div>
       </div>

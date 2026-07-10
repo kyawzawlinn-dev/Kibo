@@ -17,10 +17,11 @@ import (
 	logger "Kibo/backend/kibo_utils"
 )
 
-// Indexer makes newly added articles searchable (implemented by the
-// chat2 knowledge loader).
+// Indexer keeps the search index in sync with the article files
+// (implemented by the chat2 knowledge loader).
 type Indexer interface {
 	IndexFile(ctx context.Context, path string) error
+	RemoveSource(ctx context.Context, source string) error
 }
 
 type Article struct {
@@ -30,8 +31,9 @@ type Article struct {
 }
 
 var (
-	ErrExists  = errors.New("an article with this name already exists")
-	ErrInvalid = errors.New("article needs a title and content")
+	ErrExists   = errors.New("an article with this name already exists")
+	ErrInvalid  = errors.New("article needs a title and content")
+	ErrNotFound = errors.New("article not found")
 )
 
 // maxArticleSize keeps a single article within sane bounds (100 KB).
@@ -109,6 +111,69 @@ func (l *Library) Add(ctx context.Context, title, content string) (Article, erro
 	}
 
 	return Article{ID: id, Title: title, Content: content}, nil
+}
+
+// Update replaces an article's content, keeping its id (and therefore
+// its citation name). The old chunks are removed from the index first
+// so search never returns stale content.
+func (l *Library) Update(ctx context.Context, id, content string) (Article, error) {
+	content = strings.TrimSpace(content)
+	if content == "" || len(content) > maxArticleSize {
+		return Article{}, ErrInvalid
+	}
+
+	path, err := l.pathFor(id)
+	if err != nil {
+		return Article{}, err
+	}
+	if _, err := os.Stat(path); err != nil {
+		return Article{}, ErrNotFound
+	}
+
+	if err := l.indexer.RemoveSource(ctx, id+".md"); err != nil {
+		logger.Warn("[library.go/Update]:\tremoving old chunks of %s: %v", id, err)
+	}
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		return Article{}, fmt.Errorf("saving article: %w", err)
+	}
+
+	if err := l.indexer.IndexFile(ctx, path); err != nil {
+		logger.Warn("[library.go/Update]:\tindexing %s failed (will index on restart): %v", id, err)
+	}
+
+	return Article{ID: id, Title: titleOf(content, id), Content: content}, nil
+}
+
+// Delete removes an article file and its indexed chunks.
+func (l *Library) Delete(ctx context.Context, id string) error {
+	path, err := l.pathFor(id)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(path); err != nil {
+		return ErrNotFound
+	}
+
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("deleting article: %w", err)
+	}
+
+	if err := l.indexer.RemoveSource(ctx, id+".md"); err != nil {
+		logger.Warn("[library.go/Delete]:\tremoving chunks of %s: %v", id, err)
+	}
+	return nil
+}
+
+// pathFor validates an id (slug charset only — no path traversal) and
+// returns its file path.
+var idPattern = regexp.MustCompile(`^[a-z0-9_]+$`)
+
+func (l *Library) pathFor(id string) (string, error) {
+	if !idPattern.MatchString(id) {
+		return "", ErrInvalid
+	}
+	return filepath.Join(l.dir, id+".md"), nil
 }
 
 // slugify turns "Back pain" into "back_pain" — a safe filename that

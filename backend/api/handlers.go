@@ -249,6 +249,56 @@ func (h *Handlers) HandleAddLibraryArticle(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusCreated, article)
 }
 
+// HandleUpdateLibraryArticle replaces an article's content and reindexes it.
+func (h *Handlers) HandleUpdateLibraryArticle(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	var body struct {
+		Content string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	article, err := h.library.Update(r.Context(), id, body.Content)
+	switch {
+	case errors.Is(err, library.ErrInvalid):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	case errors.Is(err, library.ErrNotFound):
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	case err != nil:
+		logger.Error("[handlers.go/HandleUpdateLibraryArticle]:\t%v", err)
+		http.Error(w, "Failed to update article", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, article)
+}
+
+// HandleDeleteLibraryArticle removes an article and its indexed chunks.
+func (h *Handlers) HandleDeleteLibraryArticle(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	err := h.library.Delete(r.Context(), id)
+	switch {
+	case errors.Is(err, library.ErrInvalid):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	case errors.Is(err, library.ErrNotFound):
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	case err != nil:
+		logger.Error("[handlers.go/HandleDeleteLibraryArticle]:\t%v", err)
+		http.Error(w, "Failed to delete article", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "id": id})
+}
+
 // --- Emergency handlers ---
 
 // HandleGetEmergencyCards returns the embedded first-aid cards.
