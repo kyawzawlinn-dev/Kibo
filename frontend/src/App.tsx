@@ -5,6 +5,7 @@ import BodyRecord from "./components/BodyRecord";
 import Emergency from "./components/Emergency";
 import Library from "./components/Library";
 import Share from "./components/Share";
+import DoctorSummary from "./components/DoctorSummary";
 
 import {
   createNewChat,
@@ -208,7 +209,7 @@ export default function App() {
   // RENDER UI
   // -------------------------------------------------------
   return (
-    <div className="flex h-screen w-screen bg-night-900 text-night-50 font-sans">
+    <div className="flex h-screen w-screen bg-night-900 text-night-50 font-sans print:h-auto print:bg-white">
       <Sidebar
         chats={chats}
         activeChatId={activeChatId}
@@ -223,9 +224,9 @@ export default function App() {
         onNavigate={(page) => setCurrentPage(page)}
       />
 
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden print:overflow-visible">
         {/* Header */}
-        <header className="px-5 py-3 border-b border-night-800 flex items-center justify-between">
+        <header className="px-5 py-3 border-b border-night-800 flex items-center justify-between print:hidden">
           <h1 className="text-lg font-medium text-night-50">
             {currentPage === "chat"
               ? activeChat?.name ?? "Chat"
@@ -235,6 +236,8 @@ export default function App() {
               ? "Health library"
               : currentPage === "share"
               ? "Share on Wi-Fi"
+              : currentPage === "summary"
+              ? "Doctor summary"
               : "Emergency first aid"}
           </h1>
 
@@ -266,7 +269,7 @@ export default function App() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto print:overflow-visible">
           {currentPage === "chat" && activeChat ? (
             <ChatBox
               chat={activeChat}
@@ -282,6 +285,8 @@ export default function App() {
             <Library />
           ) : currentPage === "share" ? (
             <Share />
+          ) : currentPage === "summary" ? (
+            <DoctorSummary />
           ) : (
             <div className="p-8 text-center text-night-400">
               Select a chat or create a new one.

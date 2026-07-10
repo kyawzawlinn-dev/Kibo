@@ -6,6 +6,7 @@ import {
   Activity,
   AlertTriangle,
   BookOpen,
+  FileText,
   Leaf,
   Menu,
   Wifi,
@@ -52,7 +53,7 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`shrink-0 bg-night-950 border-r border-night-800 h-full flex flex-col overflow-hidden
+      className={`shrink-0 bg-night-950 border-r border-night-800 h-full flex flex-col overflow-hidden print:hidden
         transition-[width] duration-200 ease-in-out ${expanded ? "w-64" : "w-14"}`}
     >
       {/* Top: brand + close (expanded) / hamburger (collapsed) */}
@@ -208,6 +209,21 @@ export default function Sidebar({
         >
           <Activity size={16} className="shrink-0" />
           {expanded && "Body record"}
+        </button>
+
+        <button
+          onClick={() => onNavigate("summary")}
+          title="Doctor summary"
+          className={`flex items-center rounded-lg text-sm transition-colors
+            ${expanded ? "w-full gap-2.5 px-3 py-2" : "justify-center w-9 h-9"}
+            ${
+              currentPage === "summary"
+                ? "bg-mint/10 text-mint-soft font-medium"
+                : "text-night-200 hover:bg-night-800"
+            }`}
+        >
+          <FileText size={16} className="shrink-0" />
+          {expanded && "Doctor summary"}
         </button>
 
         <button
