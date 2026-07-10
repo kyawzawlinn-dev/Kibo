@@ -55,8 +55,8 @@ The plan, in order:
 - [x] Wire body/diet record API routes to the frontend
 - [x] Per-chat conversation memory, read from the database so it survives restarts
 - [x] Merge classifier calls to cut per-message LLM round-trips (faster replies on weak hardware)
-- [ ] Embed the built frontend into the Go binary (`go:embed`) → **one executable, no Node required**
-- [ ] Remove legacy `chat/` package and dead code
+- [x] Embed the built frontend into the Go binary (`go:embed`) → **one executable, no Node required**
+- [x] Remove legacy `chat/` package and dead code
 
 **Phase 2 — The health companion**
 - [ ] Log health data through chat ("I weighed 68kg today" → saved record)
@@ -73,21 +73,30 @@ The plan, in order:
 - [ ] Knowledge-base update packs distributable by USB stick (offline updates)
 - [ ] Local-language support
 
-## Running it today (development setup)
+## Running it
 
-Requirements: Go, Node.js, and [Ollama](https://ollama.com) with `llama3.2` and `nomic-embed-text` pulled. No Docker needed.
+Requirements: [Ollama](https://ollama.com) with `llama3.2` and `nomic-embed-text` pulled. No Docker, no Node at runtime.
+
+**Single binary (the product):**
 
 ```bash
-# terminal 1 — backend
+cd frontend && npm run build   # bundle the UI into the Go module (needs Node once)
+cd ../backend && go build -o kibo . && ./kibo
+```
+
+Then open http://localhost:8080 — the binary serves the app and the API, and stores all data in `data/`.
+
+**Development (hot reload):**
+
+```bash
+# terminal 1 — backend API
 cd backend && go run main.go
 
-# terminal 2 — frontend
+# terminal 2 — frontend with hot reload (proxies /api to the backend)
 cd frontend && npm run dev
 ```
 
 Then open http://localhost:5173.
-
-The end goal is: install Ollama once (the only step needing internet), download one Kibo binary, double-click. Offline forever after.
 
 ## License
 

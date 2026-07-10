@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"Kibo/backend/bodyrecord"
@@ -11,7 +10,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func NewRouter(repo *bodyrecord.Repository, agent *chat2.ChatAgent) http.Handler {
+func NewRouter(repo *bodyrecord.Repository, agent *chat2.ChatAgent, ui http.FileSystem) http.Handler {
 	r := mux.NewRouter()
 	handlers := NewHandlers(repo, agent)
 
@@ -28,18 +27,34 @@ func NewRouter(repo *bodyrecord.Repository, agent *chat2.ChatAgent) http.Handler
 	r.HandleFunc("/api/records/diet", handlers.HandleGetDietRecords).Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/records/diet", handlers.HandleCreateDietRecord).Methods("POST", "OPTIONS")
 
-	// --- STATIC FILES + SPA FALLBACK (built frontend) ---
-	staticDir := "../frontend/build"
-	fs := http.FileServer(http.Dir(staticDir))
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
+	// --- EMBEDDED FRONTEND + SPA FALLBACK ---
+	r.PathPrefix("/").Handler(spaHandler(ui)).Methods("GET")
 
-	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return r
+}
+
+// spaHandler serves the embedded frontend: real files as-is, and
+// index.html for any other path so client-side routing works.
+func spaHandler(ui http.FileSystem) http.Handler {
+	fileServer := http.FileServer(ui)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			http.NotFound(w, r)
 			return
 		}
-		http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
-	}).Methods("GET")
 
-	return r
+		path := strings.TrimSuffix(r.URL.Path, "/")
+		if path == "" {
+			path = "/index.html"
+		}
+		if f, err := ui.Open(path); err != nil {
+			// not a real file -> SPA fallback to index.html
+			r.URL.Path = "/"
+		} else {
+			f.Close()
+		}
+
+		fileServer.ServeHTTP(w, r)
+	})
 }

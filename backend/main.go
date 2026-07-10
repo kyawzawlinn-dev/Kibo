@@ -5,6 +5,7 @@ import (
 	"Kibo/backend/bodyrecord"
 	"Kibo/backend/chat2"
 	"Kibo/backend/db"
+	"Kibo/backend/webui"
 	"context"
 	"log"
 	"net/http"
@@ -51,8 +52,12 @@ func main() {
 	ragService := chat2.NewRAGService(repo, ollamaClient, vectorStore)
 	agent := chat2.NewChatAgent(ragService, ollamaClient, repo)
 
-	// Router
-	router := api.NewRouter(repo, agent)
+	// Router serving the API and the embedded frontend
+	ui, err := webui.FS()
+	if err != nil {
+		log.Fatalf("Failed to load embedded frontend: %v", err)
+	}
+	router := api.NewRouter(repo, agent, ui)
 
 	corsHandler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},

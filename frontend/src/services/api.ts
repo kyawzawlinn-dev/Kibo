@@ -23,7 +23,9 @@ export interface ChatHistoryResponse {
   messages: ChatHistoryItem[];
 }
 
-const API_BASE_URL = "http://localhost:8080/api";
+// Same-origin: the Go binary serves both the UI and the API. In dev,
+// Vite proxies /api to the backend (see vite.config.ts).
+const API_BASE_URL = "/api";
 
 /* -----------------------------
    CREATE NEW CHAT
@@ -175,75 +177,3 @@ export async function addDietRecord(
   if (!res.ok) throw new Error("Failed to add diet record");
   return toDietRecord(await res.json());
 }
-
-// import type { BodyRecord, ChatResponse, DietRecord } from "../types";
-
-// const API_BASE_URL = "http://localhost:8080/api";
-
-// /**
-//  * Sends a message to the Kibo AI Chat endpoint.
-//  * @param message The user message to send.
-//  * @returns The AI's reply as a string.
-//  */
-// export async function sendMessage(message: string, chatID: number): Promise<ChatResponse> {
-//   const response = await fetch(`${API_BASE_URL}/chat`, {
-//     method: "POST",
-//     headers: {
-//       "Content-Type": "application/json",
-//     },
-//     body: JSON.stringify({ message , chat_id: chatID}),
-//   });
-
-//   if (!response.ok) {
-//     // If the backend failed, throw an error with the status
-//     const errorText = await response.text();
-//     throw new Error(`Failed to get AI reply. Status: ${response.status}. Detail: ${errorText}`);
-//   }
-
-//   // const data: { reply: string } = await response.json();
-//   // return data.reply;
-//     const data = await response.json();
-//     return data as ChatResponse;
-// }
-
-// /**
-//  * Fetches all Body Records for the user.
-//  */
-// export async function getBodyRecords(): Promise<BodyRecord[]> {
-//   // NOTE: Assuming your Go backend exposes /api/records/body for fetching
-//   const response = await fetch(`${API_BASE_URL}/records/body`);
-//   if (!response.ok) throw new Error("Failed to fetch body records.");
-  
-//   // Mock data structure for frontend development
-//   // In a real app, this would return the response.json()
-//   const mockData: BodyRecord[] = [
-//     { id: 1, recordType: "Weight", value: 75, unit: "kg", timestamp: "2024-01-01T10:00:00Z" },
-//     { id: 2, recordType: "Sleep", value: 7.5, unit: "hours", timestamp: "2024-01-02T08:00:00Z" },
-//   ];
-
-//   return mockData;
-// }
-
-// /**
-//  * Adds a new Body Record.
-//  * @param record The new record data.
-//  */
-// export async function addBodyRecord(record: Omit<BodyRecord, 'id' | 'timestamp'>): Promise<BodyRecord> {
-//   // NOTE: Assuming your Go backend exposes /api/records/body for adding
-//   const response = await fetch(`${API_BASE_URL}/records/body`, {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify(record),
-//   });
-
-//   if (!response.ok) throw new Error("Failed to add body record.");
-  
-//   // Mock return structure for the newly created record
-//   return { ...record, id: Date.now(), timestamp: new Date().toISOString() };
-// }
-
-// // Placeholder for other record types (e.g., Diet)
-// export async function getDietRecords(): Promise<DietRecord[]> {
-//     // Implement API call to /api/records/diet
-//     return [];
-// }
