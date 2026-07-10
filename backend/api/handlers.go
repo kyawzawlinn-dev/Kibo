@@ -20,8 +20,24 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// demoUserID stands in for authentication until user accounts exist.
-const demoUserID = int64(2)
+// defaultProfileID is the seeded "Family" profile — used when a
+// request carries no profile header (first run, old clients).
+const defaultProfileID = int64(2)
+
+// profileID resolves the active profile for a request. Profiles are a
+// device-trust model (a shared family laptop), not authentication: the
+// frontend sends the selected profile in a header, or as a query
+// parameter for plain-link downloads like the CSV export.
+func profileID(r *http.Request) int64 {
+	v := r.Header.Get("X-Kibo-Profile")
+	if v == "" {
+		v = r.URL.Query().Get("profile")
+	}
+	if id, err := strconv.ParseInt(v, 10, 64); err == nil && id > 0 {
+		return id
+	}
+	return defaultProfileID
+}
 
 // Handlers holds dependencies for HTTP handlers
 type Handlers struct {
@@ -66,7 +82,7 @@ func chatIDFromRequest(r *http.Request) (int64, error) {
 
 // CreateChat creates a new chat row and returns its id.
 func (h *Handlers) CreateChat(w http.ResponseWriter, r *http.Request) {
-	chatID, err := h.repo.CreateChat(r.Context(), demoUserID)
+	chatID, err := h.repo.CreateChat(r.Context(), profileID(r))
 	if err != nil {
 		logger.Error("[handlers.go/CreateChat]:\t%v", err)
 		http.Error(w, "Failed to create chat", http.StatusInternalServerError)
@@ -103,7 +119,7 @@ func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 
 // ListChats returns all chats for the user.
 func (h *Handlers) ListChats(w http.ResponseWriter, r *http.Request) {
-	chats, err := h.repo.ListChatsByUser(r.Context(), demoUserID)
+	chats, err := h.repo.ListChatsByUser(r.Context(), profileID(r))
 	if err != nil {
 		logger.Error("[handlers.go/ListChats]:\t%v", err)
 		http.Error(w, "Failed to list chats", http.StatusInternalServerError)
@@ -121,7 +137,7 @@ func (h *Handlers) DeleteChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	belongs, err := h.repo.ChatBelongsToUser(r.Context(), chatID, demoUserID)
+	belongs, err := h.repo.ChatBelongsToUser(r.Context(), chatID, profileID(r))
 	if err != nil {
 		logger.Error("[handlers.go/DeleteChat]:\tChatBelongsToUser: %v", err)
 		http.Error(w, "Failed to verify ownership", http.StatusInternalServerError)
@@ -168,7 +184,7 @@ func (h *Handlers) SendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	userID := demoUserID
+	userID := profileID(r)
 
 	// Save the user message first — the agent reads conversation
 	// context from chat_history, so this must land before Answer.
@@ -212,12 +228,94 @@ func (h *Handlers) SendMessage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ChatResponse{Reply: reply, Title: title})
 }
 
+// --- Profile handlers ---
+
+type ProfileResponse struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+// HandleGetProfiles lists all profiles on this device.
+func (h *Handlers) HandleGetProfiles(w http.ResponseWriter, r *http.Request) {
+	users, err := h.repo.ListUsers(r.Context())
+	if err != nil {
+		logger.Error("[handlers.go/HandleGetProfiles]:\t%v", err)
+		http.Error(w, "Failed to list profiles", http.StatusInternalServerError)
+		return
+	}
+
+	out := make([]ProfileResponse, 0, len(users))
+	for _, u := range users {
+		out = append(out, ProfileResponse{ID: u.ID, Name: u.Username})
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// HandleCreateProfile adds a new profile.
+func (h *Handlers) HandleCreateProfile(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	name := strings.TrimSpace(body.Name)
+	if name == "" || len(name) > 50 {
+		http.Error(w, "Profile needs a name (max 50 characters)", http.StatusBadRequest)
+		return
+	}
+
+	id, err := h.repo.CreateUser(r.Context(), name, "")
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") {
+			http.Error(w, "A profile with this name already exists", http.StatusConflict)
+			return
+		}
+		logger.Error("[handlers.go/HandleCreateProfile]:\t%v", err)
+		http.Error(w, "Failed to create profile", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, ProfileResponse{ID: id, Name: name})
+}
+
+// HandleDeleteProfile removes a profile and all its data. The last
+// remaining profile cannot be deleted.
+func (h *Handlers) HandleDeleteProfile(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid profile id", http.StatusBadRequest)
+		return
+	}
+
+	count, err := h.repo.CountUsers(r.Context())
+	if err != nil {
+		logger.Error("[handlers.go/HandleDeleteProfile]:\t%v", err)
+		http.Error(w, "Failed to check profiles", http.StatusInternalServerError)
+		return
+	}
+	if count <= 1 {
+		http.Error(w, "Cannot delete the last profile", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.DeleteUser(r.Context(), id); err != nil {
+		logger.Error("[handlers.go/HandleDeleteProfile]:\t%v", err)
+		http.Error(w, "Failed to delete profile", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "id": id})
+}
+
 // --- CSV export/import ---
 
 // HandleExportRecordsCSV streams all body records as a CSV download —
 // the backup, migration, and spreadsheet format.
 func (h *Handlers) HandleExportRecordsCSV(w http.ResponseWriter, r *http.Request) {
-	records, err := h.repo.GetBodyRecords(r.Context(), demoUserID)
+	records, err := h.repo.GetBodyRecords(r.Context(), profileID(r))
 	if err != nil {
 		logger.Error("[handlers.go/HandleExportRecordsCSV]:\t%v", err)
 		http.Error(w, "Failed to load records", http.StatusInternalServerError)
@@ -280,7 +378,7 @@ func (h *Handlers) HandleImportRecordsCSV(w http.ResponseWriter, r *http.Request
 	}
 
 	// existing records index for deduplication
-	existing, err := h.repo.GetBodyRecords(ctx, demoUserID)
+	existing, err := h.repo.GetBodyRecords(ctx, profileID(r))
 	if err != nil {
 		logger.Error("[handlers.go/HandleImportRecordsCSV]:\t%v", err)
 		http.Error(w, "Failed to load records", http.StatusInternalServerError)
@@ -328,7 +426,7 @@ func (h *Handlers) HandleImportRecordsCSV(w http.ResponseWriter, r *http.Request
 		}
 
 		if _, err := h.repo.AddBodyRecord(ctx, bodyrecord.BodyRecord{
-			UserID:     demoUserID,
+			UserID:     profileID(r),
 			RecordType: recType,
 			Value:      value,
 			Unit:       unit,
@@ -504,7 +602,7 @@ func (h *Handlers) HandleCreateBodyRecord(w http.ResponseWriter, r *http.Request
 
 	// Keep a client-supplied timestamp so records can be logged for
 	// past dates; stamp "now" only when none was given.
-	record.UserID = demoUserID
+	record.UserID = profileID(r)
 	if record.Timestamp.IsZero() {
 		record.Timestamp = time.Now()
 	}
@@ -521,7 +619,7 @@ func (h *Handlers) HandleCreateBodyRecord(w http.ResponseWriter, r *http.Request
 }
 
 func (h *Handlers) HandleGetBodyRecords(w http.ResponseWriter, r *http.Request) {
-	records, err := h.repo.GetBodyRecords(r.Context(), demoUserID)
+	records, err := h.repo.GetBodyRecords(r.Context(), profileID(r))
 	if err != nil {
 		logger.Error("[handlers.go/HandleGetBodyRecords]:\t%v", err)
 		http.Error(w, "Failed to retrieve records", http.StatusInternalServerError)
@@ -538,7 +636,7 @@ func (h *Handlers) HandleCreateDietRecord(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	record.UserID = demoUserID
+	record.UserID = profileID(r)
 	if record.Timestamp.IsZero() {
 		record.Timestamp = time.Now()
 	}
@@ -555,7 +653,7 @@ func (h *Handlers) HandleCreateDietRecord(w http.ResponseWriter, r *http.Request
 }
 
 func (h *Handlers) HandleGetDietRecords(w http.ResponseWriter, r *http.Request) {
-	records, err := h.repo.GetDietRecords(r.Context(), demoUserID)
+	records, err := h.repo.GetDietRecords(r.Context(), profileID(r))
 	if err != nil {
 		logger.Error("[handlers.go/HandleGetDietRecords]:\t%v", err)
 		http.Error(w, "Failed to retrieve records", http.StatusInternalServerError)

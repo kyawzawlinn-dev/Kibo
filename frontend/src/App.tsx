@@ -13,15 +13,43 @@ import {
   getChatHistory,
   deleteChat,
   sendMessage,
+  getProfiles,
+  getActiveProfileId,
+  setActiveProfileId,
 } from "./services/api";
 
-import type { Chat, ChatResponse, Message, Page } from "./types";
+import type { Chat, ChatResponse, Message, Page, Profile } from "./types";
+import Profiles from "./components/Profiles";
 
 export default function App() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("chat");
   const [isLoading, setIsLoading] = useState(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [activeProfileId, setActiveProfile] = useState<number | null>(
+    getActiveProfileId()
+  );
+
+  const loadProfiles = async () => {
+    try {
+      const list = await getProfiles();
+      setProfiles(list);
+      // keep the stored selection if it still exists, else fall back
+      const stored = getActiveProfileId();
+      const valid = list.find((p) => p.id === stored) ?? list[0];
+      if (valid) {
+        setActiveProfile(valid.id);
+        setActiveProfileId(valid.id);
+      }
+    } catch (err) {
+      console.error("Failed to load profiles:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadProfiles();
+  }, []);
 
   const activeChat = useMemo(
     () => chats.find((c) => c.id === activeChatId) ?? null,
@@ -214,6 +242,9 @@ export default function App() {
         chats={chats}
         activeChatId={activeChatId}
         currentPage={currentPage}
+        activeProfileName={
+          profiles.find((p) => p.id === activeProfileId)?.name ?? null
+        }
         onNewChat={handleNewChat}
         onSelectChat={(id) => {
           setActiveChatId(id);
@@ -238,6 +269,8 @@ export default function App() {
               ? "Share on Wi-Fi"
               : currentPage === "summary"
               ? "Doctor summary"
+              : currentPage === "profiles"
+              ? "Profiles"
               : "Emergency first aid"}
           </h1>
 
@@ -287,6 +320,12 @@ export default function App() {
             <Share />
           ) : currentPage === "summary" ? (
             <DoctorSummary />
+          ) : currentPage === "profiles" ? (
+            <Profiles
+              profiles={profiles}
+              activeId={activeProfileId}
+              onRefresh={loadProfiles}
+            />
           ) : (
             <div className="p-8 text-center text-night-400">
               Select a chat or create a new one.

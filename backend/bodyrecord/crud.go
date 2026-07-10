@@ -97,6 +97,60 @@ func (r *Repository) GetDietRecords(ctx context.Context, userID int64) ([]DietRe
 }
 
 // -------------------------------
+// Profile (user) CRUD
+// -------------------------------
+
+// ListUsers returns all profiles, oldest first.
+func (r *Repository) ListUsers(ctx context.Context) ([]User, error) {
+	rows, err := r.DB.QueryContext(ctx, "SELECT id, username, created_at FROM users ORDER BY id ASC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Username, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+// CountUsers returns the number of profiles.
+func (r *Repository) CountUsers(ctx context.Context) (int, error) {
+	var n int
+	err := r.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&n)
+	return n, err
+}
+
+// DeleteUser removes a profile and everything it owns, atomically.
+func (r *Repository) DeleteUser(ctx context.Context, userID int64) error {
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	statements := []string{
+		"DELETE FROM chat_history WHERE chat_id IN (SELECT id FROM chats WHERE user_id = ?)",
+		"DELETE FROM chats WHERE user_id = ?",
+		"DELETE FROM body_records WHERE user_id = ?",
+		"DELETE FROM diet_records WHERE user_id = ?",
+		"DELETE FROM user_settings WHERE user_id = ?",
+		"DELETE FROM users WHERE id = ?",
+	}
+	for _, stmt := range statements {
+		if _, err := tx.ExecContext(ctx, stmt, userID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// -------------------------------
 // Chat CRUD
 // -------------------------------
 

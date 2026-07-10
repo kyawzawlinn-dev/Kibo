@@ -22,6 +22,11 @@ func NewRouter(repo *bodyrecord.Repository, agent *chat2.ChatAgent, lib *library
 	r.HandleFunc("/api/chat/{chat_id}", handlers.GetChat).Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/chat/{chat_id}", handlers.DeleteChat).Methods("DELETE", "OPTIONS")
 
+	// --- PROFILE ROUTES ---
+	r.HandleFunc("/api/profiles", handlers.HandleGetProfiles).Methods("GET", "OPTIONS")
+	r.HandleFunc("/api/profiles", handlers.HandleCreateProfile).Methods("POST", "OPTIONS")
+	r.HandleFunc("/api/profiles/{id}", handlers.HandleDeleteProfile).Methods("DELETE", "OPTIONS")
+
 	// --- SHARE ROUTES ---
 	r.HandleFunc("/api/share", handlers.HandleGetShareInfo).Methods("GET", "OPTIONS")
 

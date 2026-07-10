@@ -51,6 +51,7 @@ Kibo is under active development. What works today:
 - ✅ **Share on Wi-Fi**: one laptop serves every phone on the local network — scan a QR code, no internet involved
 - ✅ **Doctor summary**: a printable page of your recorded health data (stats, recent entries, handwriting blanks) to bring to appointments
 - ✅ **CSV export/import**: back up your records to a file (USB-stick friendly) and import from spreadsheets or other apps, with safe deduplication
+- ✅ **Family profiles**: one device, many people — each profile has its own chats and records; the library and emergency cards are shared
 
 ## Roadmap
 
@@ -75,7 +76,7 @@ The plan, in order:
 - [x] Printable health summary to bring to a doctor
 - [x] CSV export/import of health records (backup, device migration, spreadsheets)
 - [ ] Import from Apple Health (export.xml) and Google Takeout
-- [ ] Family profiles on one device
+- [x] Family profiles on one device
 - [ ] Knowledge-base update packs distributable by USB stick (offline updates)
 - [ ] Local-language support
 

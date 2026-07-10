@@ -18,6 +18,7 @@ interface SidebarProps {
   chats: Chat[];
   activeChatId: number | null;
   currentPage: Page;
+  activeProfileName: string | null;
   onNewChat: () => void;
   onSelectChat: (id: number) => void;
   onDeleteChat: (id: number) => void;
@@ -29,6 +30,7 @@ export default function Sidebar({
   chats,
   activeChatId,
   currentPage,
+  activeProfileName,
   onNewChat,
   onSelectChat,
   onDeleteChat,
@@ -81,6 +83,27 @@ export default function Sidebar({
           </button>
         )}
       </div>
+
+      {/* Active profile (click to manage) */}
+      <button
+        onClick={() => onNavigate("profiles")}
+        title="Profiles"
+        className={`shrink-0 flex items-center border-b border-night-800 transition-colors hover:bg-night-800
+          ${expanded ? "gap-2.5 px-3 py-2.5 w-full" : "justify-center py-2.5 w-full"}
+          ${currentPage === "profiles" ? "bg-mint/10" : ""}`}
+      >
+        <span className="w-8 h-8 rounded-full bg-mint/15 text-mint-soft flex items-center justify-center text-sm font-medium shrink-0">
+          {(activeProfileName ?? "?").charAt(0).toUpperCase()}
+        </span>
+        {expanded && (
+          <span className="min-w-0 text-left">
+            <span className="block text-sm text-night-50 truncate">
+              {activeProfileName ?? "Loading…"}
+            </span>
+            <span className="block text-[11px] text-night-500">Switch profile</span>
+          </span>
+        )}
+      </button>
 
       {/* New chat */}
       <div className={`shrink-0 ${expanded ? "p-3" : "py-3 flex justify-center"}`}>

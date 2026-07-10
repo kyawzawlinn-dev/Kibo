@@ -1,4 +1,4 @@
-import type { BodyRecord, ChatResponse, DietRecord, EmergencyCard, LibraryArticle } from "../types";
+import type { BodyRecord, ChatResponse, DietRecord, EmergencyCard, LibraryArticle, Profile } from "../types";
 
 export interface NewChatResponse {
   chat_id: number;
@@ -28,10 +28,60 @@ export interface ChatHistoryResponse {
 const API_BASE_URL = "/api";
 
 /* -----------------------------
+   PROFILES (device-trust, no passwords)
+   Every API call carries the active profile in a header; the backend
+   falls back to the default profile when it is missing.
+------------------------------ */
+const PROFILE_KEY = "kibo_profile";
+
+export function getActiveProfileId(): number | null {
+  const v = localStorage.getItem(PROFILE_KEY);
+  return v ? Number(v) : null;
+}
+
+export function setActiveProfileId(id: number) {
+  localStorage.setItem(PROFILE_KEY, String(id));
+}
+
+function apiFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const pid = localStorage.getItem(PROFILE_KEY);
+  if (pid) headers.set("X-Kibo-Profile", pid);
+  return fetch(input, { ...init, headers });
+}
+
+export async function getProfiles(): Promise<Profile[]> {
+  const res = await apiFetch(`${API_BASE_URL}/profiles`);
+  if (!res.ok) throw new Error("Failed to fetch profiles");
+  return res.json();
+}
+
+export async function createProfile(name: string): Promise<Profile> {
+  const res = await apiFetch(`${API_BASE_URL}/profiles`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(txt.trim() || "Failed to create profile");
+  }
+  return res.json();
+}
+
+export async function deleteProfile(id: number): Promise<void> {
+  const res = await apiFetch(`${API_BASE_URL}/profiles/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(txt.trim() || "Failed to delete profile");
+  }
+}
+
+/* -----------------------------
    CREATE NEW CHAT
 ------------------------------ */
 export async function createNewChat(): Promise<NewChatResponse> {
-  const res = await fetch(`${API_BASE_URL}/chat/new`, {
+  const res = await apiFetch(`${API_BASE_URL}/chat/new`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
   });
@@ -43,7 +93,7 @@ export async function createNewChat(): Promise<NewChatResponse> {
    GET ALL CHATS
 ------------------------------ */
 export async function getAllChats(): Promise<ChatListItem[]> {
-  const res = await fetch(`${API_BASE_URL}/chats`);
+  const res = await apiFetch(`${API_BASE_URL}/chats`);
   if (!res.ok) throw new Error("Failed to fetch chats");
   return res.json();
 }
@@ -52,7 +102,7 @@ export async function getAllChats(): Promise<ChatListItem[]> {
    GET CHAT HISTORY
 ------------------------------ */
 export async function getChatHistory(chatID: number): Promise<ChatHistoryResponse> {
-  const res = await fetch(`${API_BASE_URL}/chat/${chatID}`);
+  const res = await apiFetch(`${API_BASE_URL}/chat/${chatID}`);
 
   if (!res.ok) {
     const txt = await res.text();
@@ -71,7 +121,7 @@ export async function getChatHistory(chatID: number): Promise<ChatHistoryRespons
    DELETE CHAT
 ------------------------------ */
 export async function deleteChat(chatID: number): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/chat/${chatID}`, {
+  const res = await apiFetch(`${API_BASE_URL}/chat/${chatID}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete chat");
@@ -82,7 +132,7 @@ export async function deleteChat(chatID: number): Promise<void> {
    FIXED: This must call /chat/:id/message
 ------------------------------ */
 export async function sendMessage(message: string, chatID: number): Promise<ChatResponse> {
-  const res = await fetch(`${API_BASE_URL}/chat/${chatID}/message`, {
+  const res = await apiFetch(`${API_BASE_URL}/chat/${chatID}/message`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message }),
@@ -99,7 +149,12 @@ export async function sendMessage(message: string, chatID: number): Promise<Chat
 /* -----------------------------
    CSV EXPORT / IMPORT
 ------------------------------ */
-export const exportRecordsUrl = `${API_BASE_URL}/records/export.csv`;
+// Plain <a> downloads cannot carry headers, so the export link puts
+// the profile in a query parameter instead.
+export function exportRecordsUrl(): string {
+  const pid = localStorage.getItem(PROFILE_KEY);
+  return `${API_BASE_URL}/records/export.csv` + (pid ? `?profile=${pid}` : "");
+}
 
 export interface ImportResult {
   imported: number;
@@ -108,7 +163,7 @@ export interface ImportResult {
 }
 
 export async function importRecordsCSV(csv: string): Promise<ImportResult> {
-  const res = await fetch(`${API_BASE_URL}/records/import`, {
+  const res = await apiFetch(`${API_BASE_URL}/records/import`, {
     method: "POST",
     headers: { "Content-Type": "text/csv" },
     body: csv,
@@ -125,7 +180,7 @@ export async function importRecordsCSV(csv: string): Promise<ImportResult> {
    LAN SHARING
 ------------------------------ */
 export async function getShareInfo(): Promise<{ urls: string[] }> {
-  const res = await fetch(`${API_BASE_URL}/share`);
+  const res = await apiFetch(`${API_BASE_URL}/share`);
   if (!res.ok) throw new Error("Failed to fetch share info");
   return res.json();
 }
@@ -134,7 +189,7 @@ export async function getShareInfo(): Promise<{ urls: string[] }> {
    HEALTH LIBRARY
 ------------------------------ */
 export async function getLibraryArticles(): Promise<LibraryArticle[]> {
-  const res = await fetch(`${API_BASE_URL}/library`);
+  const res = await apiFetch(`${API_BASE_URL}/library`);
   if (!res.ok) throw new Error("Failed to fetch library");
   return res.json();
 }
@@ -143,7 +198,7 @@ export async function addLibraryArticle(
   title: string,
   content: string
 ): Promise<LibraryArticle> {
-  const res = await fetch(`${API_BASE_URL}/library`, {
+  const res = await apiFetch(`${API_BASE_URL}/library`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, content }),
@@ -160,7 +215,7 @@ export async function updateLibraryArticle(
   id: string,
   content: string
 ): Promise<LibraryArticle> {
-  const res = await fetch(`${API_BASE_URL}/library/${id}`, {
+  const res = await apiFetch(`${API_BASE_URL}/library/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
@@ -174,7 +229,7 @@ export async function updateLibraryArticle(
 }
 
 export async function deleteLibraryArticle(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/library/${id}`, {
+  const res = await apiFetch(`${API_BASE_URL}/library/${id}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete article");
@@ -184,7 +239,7 @@ export async function deleteLibraryArticle(id: string): Promise<void> {
    EMERGENCY FIRST-AID CARDS
 ------------------------------ */
 export async function getEmergencyCards(): Promise<EmergencyCard[]> {
-  const res = await fetch(`${API_BASE_URL}/emergency`);
+  const res = await apiFetch(`${API_BASE_URL}/emergency`);
   if (!res.ok) throw new Error("Failed to fetch emergency cards");
   return res.json();
 }
@@ -205,7 +260,7 @@ function toBodyRecord(r: any): BodyRecord {
 }
 
 export async function getBodyRecords(): Promise<BodyRecord[]> {
-  const res = await fetch(`${API_BASE_URL}/records/body`);
+  const res = await apiFetch(`${API_BASE_URL}/records/body`);
   if (!res.ok) throw new Error("Failed to fetch body records");
   const data = await res.json();
   return (data ?? []).map(toBodyRecord);
@@ -214,7 +269,7 @@ export async function getBodyRecords(): Promise<BodyRecord[]> {
 export async function addBodyRecord(
   record: Omit<BodyRecord, "id">
 ): Promise<BodyRecord> {
-  const res = await fetch(`${API_BASE_URL}/records/body`, {
+  const res = await apiFetch(`${API_BASE_URL}/records/body`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -246,7 +301,7 @@ function toDietRecord(r: any): DietRecord {
 }
 
 export async function getDietRecords(): Promise<DietRecord[]> {
-  const res = await fetch(`${API_BASE_URL}/records/diet`);
+  const res = await apiFetch(`${API_BASE_URL}/records/diet`);
   if (!res.ok) throw new Error("Failed to fetch diet records");
   const data = await res.json();
   return (data ?? []).map(toDietRecord);
@@ -255,7 +310,7 @@ export async function getDietRecords(): Promise<DietRecord[]> {
 export async function addDietRecord(
   record: Omit<DietRecord, "id" | "timestamp">
 ): Promise<DietRecord> {
-  const res = await fetch(`${API_BASE_URL}/records/diet`, {
+  const res = await apiFetch(`${API_BASE_URL}/records/diet`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

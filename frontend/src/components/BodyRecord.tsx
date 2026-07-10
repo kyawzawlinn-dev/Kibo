@@ -295,7 +295,7 @@ export default function BodyRecord() {
         <h2 className="text-2xl font-medium text-night-50">Health and body record</h2>
         <div className="flex gap-2">
           <a
-            href={exportRecordsUrl}
+            href={exportRecordsUrl()}
             download
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-night-700 text-sm text-night-200 hover:bg-night-800"
           >

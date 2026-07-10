@@ -101,6 +101,16 @@ func createTables(db *sql.DB) error {
 			return fmt.Errorf("failed to exec query: %w", err)
 		}
 	}
+
+	// Seed the default profile on first run. Id 2 matters: data created
+	// before profiles existed belongs to user 2, so it stays visible.
+	if _, err := db.Exec(
+		`INSERT INTO users(id, username, password_hash)
+		 SELECT 2, 'Family', '' WHERE NOT EXISTS (SELECT 1 FROM users)`,
+	); err != nil {
+		return fmt.Errorf("failed to seed default profile: %w", err)
+	}
+
 	logger.Info("[database.go/createTables]:\ttables created or verified successfully✅")
 
 	return nil
