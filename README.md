@@ -78,28 +78,16 @@ The plan, in order:
 
 ## Running it
 
-Requirements: [Ollama](https://ollama.com) with `llama3.2` and `nomic-embed-text` pulled. No Docker, no Node at runtime.
-
-**Single binary (the product):**
+One command does everything — checks [Ollama](https://ollama.com), pulls the models if missing, builds, and runs:
 
 ```bash
-cd frontend && npm run build   # bundle the UI into the Go module (needs Node once)
-cd ../backend && go build -o kibo . && ./kibo
+./kibo.sh          # build and run the app → http://localhost:8080
+./kibo.sh dev      # development mode with hot reload → http://localhost:5173
+./kibo.sh build    # just build the single binary (backend/kibo)
+./kibo.sh stop     # stop anything kibo left running
 ```
 
-Then open http://localhost:8080 — the binary serves the app and the API, and stores all data in `data/`.
-
-**Development (hot reload):**
-
-```bash
-# terminal 1 — backend API
-cd backend && go run main.go
-
-# terminal 2 — frontend with hot reload (proxies /api to the backend)
-cd frontend && npm run dev
-```
-
-Then open http://localhost:5173.
+The binary serves the app and the API together and stores all data in `data/`. No Docker; Node is only needed to build the UI, never at runtime.
 
 ## License
 

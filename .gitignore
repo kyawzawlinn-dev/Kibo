@@ -60,3 +60,6 @@ yarn-error.log*
 
 # --- Scratch notes ---
 /tmp.txt
+
+# --- Built binary ---
+/backend/kibo
