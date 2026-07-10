@@ -411,9 +411,12 @@ func (h *Handlers) HandleCreateBodyRecord(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Set server-side fields
+	// Set server-side fields; keep a client-supplied timestamp so records
+	// can be logged for past dates
 	record.UserID = 2 // demo user
-	record.Timestamp = time.Now()
+	if record.Timestamp.IsZero() {
+		record.Timestamp = time.Now()
+	}
 
 	id, err := h.repo.AddBodyRecord(r.Context(), record)
 	if err != nil {
@@ -452,9 +455,12 @@ func (h *Handlers) HandleCreateDietRecord(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Set server-side fields
+	// Set server-side fields; keep a client-supplied timestamp so records
+	// can be logged for past dates
 	record.UserID = 2 // demo user
-	record.Timestamp = time.Now()
+	if record.Timestamp.IsZero() {
+		record.Timestamp = time.Now()
+	}
 
 	id, err := h.repo.AddDietRecord(r.Context(), record)
 	if err != nil {

@@ -117,7 +117,7 @@ export async function getBodyRecords(): Promise<BodyRecord[]> {
 }
 
 export async function addBodyRecord(
-  record: Omit<BodyRecord, "id" | "timestamp">
+  record: Omit<BodyRecord, "id">
 ): Promise<BodyRecord> {
   const res = await fetch(`${API_BASE_URL}/records/body`, {
     method: "POST",
@@ -126,6 +126,8 @@ export async function addBodyRecord(
       record_type: record.recordType,
       value: record.value,
       unit: record.unit,
+      // optional: lets the user log a record for a past date
+      ...(record.timestamp ? { timestamp: record.timestamp } : {}),
     }),
   });
 

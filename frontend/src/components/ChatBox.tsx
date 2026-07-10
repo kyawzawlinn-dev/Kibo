@@ -43,8 +43,8 @@ export default function ChatBox({ chat, onUpdateMessages, onSendMessage, isLoadi
               key={msg.id}
               className={`px-4 py-2 rounded-xl break-words whitespace-pre-wrap ${
                 msg.sender === "user"
-                  ? "bg-green-500 text-white self-end rounded-br-none"
-                  : "bg-gray-100 text-gray-800 self-start rounded-tl-none"
+                  ? "bg-mint-deep text-night-50 self-end rounded-br-sm"
+                  : "bg-night-850 border border-night-700 text-night-50 self-start rounded-tl-sm"
               }`}
             >
               {msg.text}
@@ -55,21 +55,21 @@ export default function ChatBox({ chat, onUpdateMessages, onSendMessage, isLoadi
       </div>
 
       {/* Input area */}
-      <div className="w-full p-4 flex justify-center border-t bg-white">
+      <div className="w-full p-4 flex justify-center border-t border-night-800">
         <div className="flex w-full max-w-xl gap-2">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
+            className="flex-1 bg-night-850 border border-night-700 text-night-50 placeholder-night-400 rounded-lg px-4 py-2 focus:outline-none focus:border-mint"
             placeholder="Type a message..."
             disabled={isLoading}
           />
           <button
             onClick={handleSend}
             disabled={isLoading}
-            className={`bg-green-500 text-white px-6 py-2 rounded-lg ${
-              isLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-green-600"
+            className={`bg-mint text-mint-ink font-medium px-6 py-2 rounded-lg ${
+              isLoading ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"
             }`}
           >
             {isLoading ? "Sending..." : "Send"}

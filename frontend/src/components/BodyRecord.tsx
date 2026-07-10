@@ -1,22 +1,31 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import type { BodyRecord as BodyRecordType } from "../types";
 import { getBodyRecords, addBodyRecord } from "../services/api";
 import { PlusCircle } from "lucide-react";
 import RecordChart from "./RecordChart"; // Import the new chart component
 
-// List of all supported record types for the dropdown and charts
+// List of all supported record types for the form and trend charts.
+// Chart colors are a validated categorical palette for the dark surface.
 const SUPPORTED_RECORD_TYPES = [
-  { value: "Weight", unit: "kg" },
-  { value: "Sleep", unit: "hours" },
-  { value: "Activity", unit: "minutes" },
-  { value: "Water", unit: "L" }
+  { value: "Weight", unit: "kg", color: "#16A34A" },
+  { value: "Sleep", unit: "hours", color: "#8B5CF6" },
+  { value: "Activity", unit: "minutes", color: "#D97706" },
+  { value: "Water", unit: "L", color: "#0284C7" }
 ];
+
+// Today as YYYY-MM-DD in local time (toISOString would shift the day in
+// timezones ahead of UTC)
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 // Initial Form State
 const initialFormState = {
   recordType: "",
   value: "",
   unit: "",
+  date: todayStr(),
 };
 
 export default function BodyRecord() {
@@ -25,9 +34,7 @@ export default function BodyRecord() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // State to control which record type is currently being charted
-  const [chartType, setChartType] = useState<string>("Weight");
+  const [page, setPage] = useState(1);
 
   // --- Fetch Data on Load ---
   useEffect(() => {
@@ -72,22 +79,24 @@ export default function BodyRecord() {
 
     const numericValue = parseFloat(form.value);
 
-    if (!form.recordType || !form.unit || isNaN(numericValue) || numericValue <= 0) {
+    if (!form.recordType || !form.unit || !form.date || isNaN(numericValue) || numericValue <= 0) {
         setError("Please fill out all fields correctly.");
         setIsSubmitting(false);
         return;
     }
 
     try {
+        // Noon local time keeps the record on the chosen calendar day
+        // regardless of timezone
         const newRecord = await addBodyRecord({
             recordType: form.recordType,
             value: numericValue,
-            unit: form.unit
+            unit: form.unit,
+            timestamp: new Date(`${form.date}T12:00:00`).toISOString()
         });
         
-        // Add the new record to the list, set chart to the new type, and reset form
+        // Add the new record to the list and reset form
         setRecords(prev => [newRecord, ...prev]);
-        setChartType(newRecord.recordType); // Switch chart to the newly added type
         setForm(initialFormState);
     } catch (err) {
         setError("Failed to save record. Please try again.");
@@ -97,25 +106,20 @@ export default function BodyRecord() {
     }
   };
 
-  // Memoize the chart unit based on the current chart type
-  const currentChartUnit = useMemo(() => {
-    return SUPPORTED_RECORD_TYPES.find(t => t.value === chartType)?.unit || '';
-  }, [chartType]);
-
   // --- Render Functions ---
 
   const RecordForm = (
-    <div className="bg-white p-6 rounded-xl shadow-lg mb-6">
-      <h3 className="text-lg font-semibold text-green-700 mb-4 flex items-center">
-        <PlusCircle className="mr-2 w-5 h-5" /> Add New Record
+    <div className="bg-night-850 border border-night-800 p-6 rounded-xl mb-6">
+      <h3 className="text-lg font-medium text-mint-soft mb-4 flex items-center">
+        <PlusCircle className="mr-2 w-5 h-5" /> Add new record
       </h3>
-      <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {/* Record Type */}
         <select
           name="recordType"
           value={form.recordType}
           onChange={handleFormChange}
-          className="p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+          className="p-3 bg-night-900 border border-night-700 text-night-50 placeholder-night-400 rounded-lg focus:outline-none focus:border-mint"
           disabled={isSubmitting}
         >
           <option value="">Select Type</option>
@@ -131,7 +135,7 @@ export default function BodyRecord() {
           value={form.value}
           onChange={handleFormChange}
           placeholder="Value (e.g., 75 or 8.5)"
-          className="p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+          className="p-3 bg-night-900 border border-night-700 text-night-50 placeholder-night-400 rounded-lg focus:outline-none focus:border-mint"
           disabled={isSubmitting}
         />
 
@@ -142,25 +146,34 @@ export default function BodyRecord() {
           value={form.unit}
           onChange={handleFormChange}
           placeholder="Unit (e.g., kg or hours)"
-          className="p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+          className="p-3 bg-night-900 border border-night-700 text-night-50 placeholder-night-400 rounded-lg focus:outline-none focus:border-mint"
           disabled={isSubmitting}
         />
-        
+
+        {/* Date (defaults to today; pick a past date to backfill) */}
+        <input
+          type="date"
+          name="date"
+          value={form.date}
+          onChange={handleFormChange}
+          max={todayStr()}
+          className="p-3 bg-night-900 border border-night-700 text-night-50 rounded-lg focus:outline-none focus:border-mint"
+          disabled={isSubmitting}
+        />
+
         {/* Submit Button */}
         <button
           type="submit"
-          className={`p-3 rounded-lg text-white font-semibold transition duration-150 ${
-            isSubmitting
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-green-600 hover:bg-green-700"
+          className={`p-3 rounded-lg bg-mint text-mint-ink font-medium transition duration-150 ${
+            isSubmitting ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"
           }`}
           disabled={isSubmitting}
         >
-          {isSubmitting ? "Saving..." : "Save Record"}
+          {isSubmitting ? "Saving..." : "Save record"}
         </button>
       </form>
       {error && (
-        <p className="mt-3 text-sm text-red-600 p-2 bg-red-50 rounded-lg border border-red-200">
+        <p className="mt-3 text-sm text-red-400 p-2 bg-red-950/40 rounded-lg border border-red-900">
           {error}
         </p>
       )}
@@ -168,76 +181,98 @@ export default function BodyRecord() {
   );
   
   const RecordChartSection = (
-    <div className="bg-white p-6 rounded-xl shadow-lg mb-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-semibold text-green-700">
-            {chartType} Trend
-        </h3>
-        <select
-          value={chartType}
-          onChange={(e) => setChartType(e.target.value)}
-          className="p-2 border border-gray-300 rounded-lg text-sm"
-        >
-          {SUPPORTED_RECORD_TYPES.map(type => (
-            <option key={`chart-${type.value}`} value={type.value}>
-              {type.value}
-            </option>
-          ))}
-        </select>
-      </div>
-      
+    <div className="bg-night-850 border border-night-800 p-6 rounded-xl mb-6">
+      <h3 className="text-xl font-medium text-mint-soft mb-4">Trends</h3>
+
       {loading ? (
-        <div className="h-64 flex items-center justify-center text-gray-500">
+        <div className="h-64 flex items-center justify-center text-night-400">
             Loading charts...
         </div>
       ) : (
-        <RecordChart 
-            data={records} 
-            type={chartType} 
-            unit={currentChartUnit}
-        />
+        <RecordChart data={records} metrics={SUPPORTED_RECORD_TYPES} />
       )}
-      
     </div>
   );
 
+  // Newest first, paginated
+  const PAGE_SIZE = 10;
+  const sortedRecords = [...records].sort(
+    (a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()
+  );
+  const totalPages = Math.max(1, Math.ceil(sortedRecords.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRecords = sortedRecords.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   const RecordList = (
-    <div className="bg-white p-6 rounded-xl shadow-lg">
-      <h3 className="text-xl font-semibold mb-4 text-green-700">Recent Records</h3>
-      
-      {loading && <p className="text-gray-500">Loading records...</p>}
-      
+    <div className="bg-night-850 border border-night-800 p-6 rounded-xl">
+      <h3 className="text-xl font-medium mb-4 text-mint-soft">Recent records</h3>
+
+      {loading && <p className="text-night-400">Loading records...</p>}
+
       {!loading && records.length === 0 && (
-        <p className="text-gray-500 italic">No records tracked yet. Add one above!</p>
+        <p className="text-night-400 italic">No records tracked yet. Add one above.</p>
       )}
 
       {!loading && records.length > 0 && (
-        <ul className="space-y-3">
-          {/* Display newest first by reversing the array copy */}
-          {[...records].reverse().map((record) => (
-            <li
-              key={record.id}
-              className="flex justify-between items-center p-3 border-b border-gray-100 last:border-b-0 hover:bg-green-50 rounded-lg transition"
-            >
-              <div className="flex flex-col">
-                <span className="font-medium text-gray-800">{record.recordType}</span>
-                <span className="text-xs text-gray-400">
-                    {record.timestamp ? new Date(record.timestamp).toLocaleString() : 'N/A'}
-                </span>
-              </div>
-              <div className="text-lg font-bold text-green-600">
-                {record.value} {record.unit}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="space-y-3">
+            {pageRecords.map((record) => (
+              <li
+                key={record.id}
+                className="flex justify-between items-center p-3 border-b border-night-800 last:border-b-0 hover:bg-night-800/60 rounded-lg transition"
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium text-night-50">{record.recordType}</span>
+                  <span className="text-xs text-night-400">
+                      {record.timestamp ? new Date(record.timestamp).toLocaleString() : 'N/A'}
+                  </span>
+                </div>
+                <div className="text-lg font-medium text-mint">
+                  {record.value} {record.unit}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-night-800">
+              <button
+                onClick={() => setPage(safePage - 1)}
+                disabled={safePage <= 1}
+                className={`px-3 py-1.5 rounded-lg border border-night-700 text-sm ${
+                  safePage <= 1
+                    ? "text-night-500 opacity-50 cursor-not-allowed"
+                    : "text-night-200 hover:bg-night-800"
+                }`}
+              >
+                Previous
+              </button>
+
+              <span className="text-sm text-night-400">
+                Page {safePage} of {totalPages}
+              </span>
+
+              <button
+                onClick={() => setPage(safePage + 1)}
+                disabled={safePage >= totalPages}
+                className={`px-3 py-1.5 rounded-lg border border-night-700 text-sm ${
+                  safePage >= totalPages
+                    ? "text-night-500 opacity-50 cursor-not-allowed"
+                    : "text-night-200 hover:bg-night-800"
+                }`}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-3xl font-bold text-green-700 mb-6 border-b pb-2">🏋️ Health & Body Record</h2>
+      <h2 className="text-2xl font-medium text-night-50 mb-6 border-b border-night-800 pb-3">Health and body record</h2>
       
       {RecordForm}
       

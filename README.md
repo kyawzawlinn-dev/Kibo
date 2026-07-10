@@ -67,6 +67,8 @@ The plan, in order:
 **Phase 3 — Built for the field**
 - [ ] LAN sharing: one laptop serves the whole household or clinic over local Wi-Fi
 - [ ] Printable health summary to bring to a doctor
+- [ ] CSV export/import of health records (backup, device migration, spreadsheets)
+- [ ] Import from Apple Health (export.xml) and Google Takeout
 - [ ] Family profiles on one device
 - [ ] Knowledge-base update packs distributable by USB stick (offline updates)
 - [ ] Local-language support

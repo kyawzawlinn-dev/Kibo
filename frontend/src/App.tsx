@@ -207,12 +207,16 @@ export default function App() {
   // RENDER UI
   // -------------------------------------------------------
   return (
-    <div className="flex h-screen w-screen bg-gray-50 text-gray-800 font-sans">
+    <div className="flex h-screen w-screen bg-night-900 text-night-50 font-sans">
       <Sidebar
         chats={chats}
         activeChatId={activeChatId}
+        currentPage={currentPage}
         onNewChat={handleNewChat}
-        onSelectChat={(id) => setActiveChatId(id)}   // FIXED: correct callback
+        onSelectChat={(id) => {
+          setActiveChatId(id);
+          setCurrentPage("chat");
+        }}
         onDeleteChat={handleDeleteChat}
         onRenameChat={handleRenameChat}
         onNavigate={(page) => setCurrentPage(page)}
@@ -220,15 +224,15 @@ export default function App() {
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="p-4 border-b bg-white shadow-sm flex items-center justify-between">
-          <h1 className="text-xl font-bold text-green-700">
+        <header className="px-5 py-3 border-b border-night-800 flex items-center justify-between">
+          <h1 className="text-lg font-medium text-night-50">
             {currentPage === "chat"
-              ? `💬 ${activeChat?.name ?? "Chat"}`
-              : "🏋️ Body Record"}
+              ? activeChat?.name ?? "Chat"
+              : "Body record"}
           </h1>
 
           {isLoading && (
-            <div className="flex items-center text-green-500">
+            <div className="flex items-center text-mint text-sm">
               <svg
                 className="animate-spin -ml-1 mr-3 h-5 w-5"
                 xmlns="http://www.w3.org/2000/svg"
@@ -266,8 +270,8 @@ export default function App() {
           ) : currentPage === "bodyrecord" ? (
             <BodyRecord />
           ) : (
-            <div className="p-8 text-center text-gray-500">
-              Please select a chat or create a new one.
+            <div className="p-8 text-center text-night-400">
+              Select a chat or create a new one.
             </div>
           )}
         </div>

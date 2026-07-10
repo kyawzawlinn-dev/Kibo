@@ -1,10 +1,19 @@
 import { useState } from "react";
-import { PlusCircle, Trash2, Edit3, Activity } from "lucide-react";
+import {
+  PlusCircle,
+  Trash2,
+  Edit3,
+  Activity,
+  Leaf,
+  Menu,
+  X,
+} from "lucide-react";
 import type { Chat } from "../types";
 
 interface SidebarProps {
   chats: Chat[];
   activeChatId: number | null;
+  currentPage: "chat" | "bodyrecord";
   onNewChat: () => void;
   onSelectChat: (id: number) => void;
   onDeleteChat: (id: number) => void;
@@ -15,12 +24,14 @@ interface SidebarProps {
 export default function Sidebar({
   chats,
   activeChatId,
+  currentPage,
   onNewChat,
   onSelectChat,
   onDeleteChat,
   onRenameChat,
   onNavigate,
 }: SidebarProps) {
+  const [expanded, setExpanded] = useState(true);
   const [editingChatId, setEditingChatId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
 
@@ -37,82 +48,134 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="w-64 bg-white border-r h-full flex flex-col p-4 shadow-md">
-      {/* Logo */}
-      <div className="text-2xl font-bold text-green-600 mb-4">🌿 Kibo</div>
-
-      {/* Body Record Navigation */}
-      <button
-        onClick={() => onNavigate("bodyrecord")}
-        className="flex items-center mb-4 text-gray-700 hover:text-green-600"
-      >
-        <Activity className="mr-2 w-5 h-5" /> Body Record
-      </button>
-
-      {/* New Chat Button */}
-      <button
-        onClick={onNewChat}
-        className="flex items-center text-gray-700 hover:text-green-600 mb-2"
-      >
-        <PlusCircle className="mr-2 w-5 h-5" /> New Chat
-      </button>
-
-      {/* Recent Chats */}
-      <h3 className="text-sm text-gray-500 mt-4 mb-2 uppercase">Recent Chats</h3>
-
-      <div className="space-y-2 overflow-y-auto flex-1">
-        {chats.map((chat) => {
-          const isSelected = chat.id === activeChatId;
-
-          return (
-            
-            <div
-              key={chat.id}
-              onClick={() => {
-                  console.log("[DEBUG] chat item clicked:", chat.id);
-                  onSelectChat(chat.id);
-                              }}
-              className={`flex items-center justify-between px-2 py-1 rounded cursor-pointer
-                ${isSelected ? "text-green-600 font-bold" : "text-gray-700 hover:text-green-600"}`}
+    <aside
+      className={`shrink-0 bg-night-950 border-r border-night-800 h-full flex flex-col overflow-hidden
+        transition-[width] duration-200 ease-in-out ${expanded ? "w-64" : "w-14"}`}
+    >
+      {/* Top: brand + close (expanded) / hamburger (collapsed) */}
+      <div className="h-12 flex items-center border-b border-night-800 shrink-0">
+        {expanded ? (
+          <div className="w-full px-3 flex items-center justify-between">
+            <span className="flex items-center gap-2 text-night-50 font-medium">
+              <Leaf className="w-5 h-5 text-mint" /> Kibo
+            </span>
+            <button
+              onClick={() => setExpanded(false)}
+              aria-label="Close menu"
+              className="p-1.5 rounded-md text-night-400 hover:bg-night-800 hover:text-night-50"
             >
-              {editingChatId === chat.id ? (
-                <input
-                  className="w-full p-1 border rounded text-sm"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={() => saveEdit(chat.id)}
-                  onKeyDown={(e) => e.key === "Enter" && saveEdit(chat.id)}
-                  onClick={(e) => e.stopPropagation()}
-                  autoFocus
-                />
-              ) : (
-                <div className="text-left text-sm flex-1 truncate">
-                  {chat.name ?? (chat as any).title ?? "Untitled"}
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setExpanded(true)}
+            aria-label="Open menu"
+            className="w-full h-full flex items-center justify-center text-night-200 hover:bg-night-800 transition-colors"
+          >
+            <Menu size={18} />
+          </button>
+        )}
+      </div>
+
+      {/* New chat */}
+      <div className={`shrink-0 ${expanded ? "p-3" : "py-3 flex justify-center"}`}>
+        <button
+          onClick={onNewChat}
+          title="New chat"
+          className={`flex items-center justify-center bg-mint text-mint-ink font-medium rounded-lg hover:opacity-90 transition-opacity
+            ${expanded ? "w-full px-3 py-2 gap-2" : "w-9 h-9"}`}
+        >
+          <PlusCircle className="w-5 h-5" />
+          {expanded && "New chat"}
+        </button>
+      </div>
+
+      {/* Recent chats */}
+      {expanded && (
+        <>
+          <h3 className="text-[11px] tracking-widest text-night-500 uppercase px-4 mb-1 shrink-0">
+            Recent chats
+          </h3>
+          <div className="space-y-0.5 overflow-y-auto flex-1 px-2 pb-2">
+            {chats.map((chat) => {
+              const isSelected =
+                chat.id === activeChatId && currentPage === "chat";
+
+              return (
+                <div
+                  key={chat.id}
+                  onClick={() => onSelectChat(chat.id)}
+                  className={`group flex items-center justify-between px-2 py-2 rounded-lg cursor-pointer transition-colors
+                    ${
+                      isSelected
+                        ? "bg-mint/10 text-mint-soft font-medium"
+                        : "text-night-200 hover:bg-night-800"
+                    }`}
+                >
+                  {editingChatId === chat.id ? (
+                    <input
+                      className="w-full p-1 rounded text-sm bg-night-900 border border-night-700 text-night-50"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={() => saveEdit(chat.id)}
+                      onKeyDown={(e) => e.key === "Enter" && saveEdit(chat.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      autoFocus
+                    />
+                  ) : (
+                    <div className="text-left text-sm flex-1 truncate">
+                      {chat.name ?? (chat as any).title ?? "Untitled"}
+                    </div>
+                  )}
+
+                  <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      className="p-1 rounded hover:bg-night-700"
+                      title="Rename chat"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEdit(chat.id, chat.name);
+                      }}
+                    >
+                      <Edit3 size={14} className="text-night-400 hover:text-mint-soft" />
+                    </button>
+
+                    <button
+                      className="p-1 rounded hover:bg-night-700"
+                      title="Delete chat"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteChat(chat.id);
+                      }}
+                    >
+                      <Trash2 size={14} className="text-night-400 hover:text-red-400" />
+                    </button>
+                  </div>
                 </div>
-              )}
+              );
+            })}
+          </div>
+        </>
+      )}
+      {!expanded && <div className="flex-1" />}
 
-              <div className="flex gap-1 ml-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    startEdit(chat.id, chat.name);
-                  }}
-                >
-                  <Edit3 size={14} className="text-gray-500 hover:text-green-600" />
-                </button>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteChat(chat.id);
-                  }}
-                >
-                  <Trash2 size={14} className="text-gray-500 hover:text-red-600" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
+      {/* Bottom-pinned navigation */}
+      <div className={`border-t border-night-800 shrink-0 ${expanded ? "p-2" : "py-2 flex flex-col items-center"}`}>
+        <button
+          onClick={() => onNavigate("bodyrecord")}
+          title="Body record"
+          className={`flex items-center rounded-lg text-sm transition-colors
+            ${expanded ? "w-full gap-2.5 px-3 py-2" : "justify-center w-9 h-9"}
+            ${
+              currentPage === "bodyrecord"
+                ? "bg-mint/10 text-mint-soft font-medium"
+                : "text-night-200 hover:bg-night-800"
+            }`}
+        >
+          <Activity size={16} className="shrink-0" />
+          {expanded && "Body record"}
+        </button>
       </div>
     </aside>
   );
