@@ -8,11 +8,11 @@ Millions of people live where the power cuts daily and the internet is a luxury 
 
 ## Why Kibo?
 
-- **🔌 Works when nothing else does.** No cloud, no subscription, no signal required. After a one-time setup, Kibo runs entirely on your machine — through blackouts, outages, and dead zones.
-- **🧠 An AI that actually knows *you*.** Kibo answers health questions using **your own tracked records** (weight, sleep, activity, diet), not generic advice.
-- **📚 Answers you can trust.** Kibo doesn't let the AI freestyle medical facts. Every answer is grounded in a curated offline health library via RAG (retrieval-augmented generation).
-- **🪶 Light enough for a 10-year-old laptop.** A small local model, no heavyweight infrastructure, built to sip battery.
-- **🔒 Radically private.** Your health data lives in one SQLite file on your disk. Nothing is uploaded, ever — there's nowhere to upload it to.
+- ** Works when nothing else does.** No cloud, no subscription, no signal required. After a one-time setup, Kibo runs entirely on your machine — through blackouts, outages, and dead zones.
+- ** An AI that actually knows *you*.** Kibo answers health questions using **your own tracked records** (weight, sleep, activity, diet), not generic advice.
+- ** Answers you can trust.** Kibo doesn't let the AI freestyle medical facts. Every answer is grounded in a curated offline health library via RAG (retrieval-augmented generation).
+- ** Light enough for a 10-year-old laptop.** A small local model, no heavyweight infrastructure, built to sip battery.
+- ** Radically private.** Your health data lives in one SQLite file on your disk. Nothing is uploaded, ever — there's nowhere to upload it to.
 
 ## How it works
 
