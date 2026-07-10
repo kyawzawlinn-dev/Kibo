@@ -4,21 +4,22 @@ import {
   Trash2,
   Edit3,
   Activity,
+  AlertTriangle,
   Leaf,
   Menu,
   X,
 } from "lucide-react";
-import type { Chat } from "../types";
+import type { Chat, Page } from "../types";
 
 interface SidebarProps {
   chats: Chat[];
   activeChatId: number | null;
-  currentPage: "chat" | "bodyrecord";
+  currentPage: Page;
   onNewChat: () => void;
   onSelectChat: (id: number) => void;
   onDeleteChat: (id: number) => void;
   onRenameChat: (id: number, newTitle: string) => void;
-  onNavigate: (page: "chat" | "bodyrecord") => void;
+  onNavigate: (page: Page) => void;
 }
 
 export default function Sidebar({
@@ -161,7 +162,22 @@ export default function Sidebar({
       {!expanded && <div className="flex-1" />}
 
       {/* Bottom-pinned navigation */}
-      <div className={`border-t border-night-800 shrink-0 ${expanded ? "p-2" : "py-2 flex flex-col items-center"}`}>
+      <div className={`border-t border-night-800 shrink-0 space-y-1 ${expanded ? "p-2" : "py-2 flex flex-col items-center"}`}>
+        <button
+          onClick={() => onNavigate("emergency")}
+          title="Emergency first aid"
+          className={`flex items-center rounded-lg text-sm transition-colors
+            ${expanded ? "w-full gap-2.5 px-3 py-2" : "justify-center w-9 h-9"}
+            ${
+              currentPage === "emergency"
+                ? "bg-amber-400/10 text-amber-300 font-medium"
+                : "text-amber-400/90 hover:bg-night-800"
+            }`}
+        >
+          <AlertTriangle size={16} className="shrink-0" />
+          {expanded && "Emergency"}
+        </button>
+
         <button
           onClick={() => onNavigate("bodyrecord")}
           title="Body record"

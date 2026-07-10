@@ -1,4 +1,4 @@
-import type { BodyRecord, ChatResponse, DietRecord } from "../types";
+import type { BodyRecord, ChatResponse, DietRecord, EmergencyCard } from "../types";
 
 export interface NewChatResponse {
   chat_id: number;
@@ -93,6 +93,15 @@ export async function sendMessage(message: string, chatID: number): Promise<Chat
     throw new Error(`Failed to get AI reply. Status: ${res.status}. Detail: ${txt}`);
   }
 
+  return res.json();
+}
+
+/* -----------------------------
+   EMERGENCY FIRST-AID CARDS
+------------------------------ */
+export async function getEmergencyCards(): Promise<EmergencyCard[]> {
+  const res = await fetch(`${API_BASE_URL}/emergency`);
+  if (!res.ok) throw new Error("Failed to fetch emergency cards");
   return res.json();
 }
 

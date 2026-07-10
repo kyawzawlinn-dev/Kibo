@@ -8,6 +8,7 @@ import (
 
 	"Kibo/backend/bodyrecord"
 	"Kibo/backend/chat2"
+	"Kibo/backend/emergency"
 	logger "Kibo/backend/kibo_utils"
 
 	"github.com/gorilla/mux"
@@ -169,10 +170,17 @@ func (h *Handlers) SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate a title on the first message (best effort)
+	// Generate a title on the first message (best effort). For an
+	// emergency, use the card title directly — an LLM call would delay
+	// the instant first-aid reply by seconds.
 	var title string
 	if isFirst, _ := h.repo.IsFirstMessage(chatID); isFirst {
-		if title, err = h.agent.GenerateTitle(ctx, body.Message); err == nil {
+		if card := emergency.Match(body.Message); card != nil {
+			title = card.Title
+		} else if title, err = h.agent.GenerateTitle(ctx, body.Message); err != nil {
+			title = ""
+		}
+		if title != "" {
 			if err := h.repo.UpdateChatTitle(chatID, title); err != nil {
 				logger.Warn("[handlers.go/SendMessage]:\tupdating title: %v", err)
 			}
@@ -194,6 +202,13 @@ func (h *Handlers) SendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, ChatResponse{Reply: reply, Title: title})
+}
+
+// --- Emergency handlers ---
+
+// HandleGetEmergencyCards returns the embedded first-aid cards.
+func (h *Handlers) HandleGetEmergencyCards(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, emergency.All())
 }
 
 // --- Health record handlers ---

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"Kibo/backend/bodyrecord"
+	"Kibo/backend/emergency"
 	logger "Kibo/backend/kibo_utils"
 )
 
@@ -41,6 +42,13 @@ func NewChatAgent(rag *RAGService, ollama *OllamaClient, repo *bodyrecord.Reposi
 // chat. The caller has already saved that message to chat_history, so
 // the loaded history includes it.
 func (a *ChatAgent) Answer(ctx context.Context, userID, chatID int64, message string) (string, error) {
+	// Red-flag messages get the first-aid card immediately — before
+	// any LLM call. In an emergency nobody waits for token generation.
+	if card := emergency.Match(message); card != nil {
+		logger.Info("[agent.go/Answer]:\temergency card matched: %s", card.ID)
+		return formatEmergencyReply(card), nil
+	}
+
 	cl := a.classifier.Classify(ctx, message)
 	logger.Info("[agent.go/Answer]:\tintent=%s service=%s useRAG=%v", cl.Intent, cl.Service, cl.NeedsRAG())
 
@@ -70,6 +78,15 @@ func (a *ChatAgent) Answer(ctx context.Context, userID, chatID int64, message st
 		return "", fmt.Errorf("agent failed: %w", err)
 	}
 	return resp, nil
+}
+
+// formatEmergencyReply renders a first-aid card as a chat message.
+// Deterministic — the steps shown are exactly the curated card.
+func formatEmergencyReply(card *emergency.Card) string {
+	return fmt.Sprintf(
+		"🚨 %s\n\n%s\n\n⚠️ This guidance does not replace professional care — get medical help as soon as possible. All first-aid cards are on the Emergency page, fully offline.",
+		card.Title, card.Body,
+	)
 }
 
 // buildPrompt merges the classification, conversation history, and the

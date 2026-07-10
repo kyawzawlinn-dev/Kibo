@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import ChatBox from "./components/ChatBox";
 import BodyRecord from "./components/BodyRecord";
+import Emergency from "./components/Emergency";
 
 import {
   createNewChat,
@@ -11,12 +12,12 @@ import {
   sendMessage,
 } from "./services/api";
 
-import type { Chat, ChatResponse, Message } from "./types";
+import type { Chat, ChatResponse, Message, Page } from "./types";
 
 export default function App() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
-  const [currentPage, setCurrentPage] = useState<"chat" | "bodyrecord">("chat");
+  const [currentPage, setCurrentPage] = useState<Page>("chat");
   const [isLoading, setIsLoading] = useState(false);
 
   const activeChat = useMemo(
@@ -226,7 +227,9 @@ export default function App() {
           <h1 className="text-lg font-medium text-night-50">
             {currentPage === "chat"
               ? activeChat?.name ?? "Chat"
-              : "Body record"}
+              : currentPage === "bodyrecord"
+              ? "Body record"
+              : "Emergency first aid"}
           </h1>
 
           {isLoading && (
@@ -267,6 +270,8 @@ export default function App() {
             />
           ) : currentPage === "bodyrecord" ? (
             <BodyRecord />
+          ) : currentPage === "emergency" ? (
+            <Emergency />
           ) : (
             <div className="p-8 text-center text-night-400">
               Select a chat or create a new one.
@@ -277,212 +282,3 @@ export default function App() {
     </div>
   );
 }
-
-// import { useState, useMemo } from "react";
-// import Sidebar from "./components/Sidebar";
-// import ChatBox from "./components/ChatBox";
-// import BodyRecord from "./components/BodyRecord";
-// import { sendMessage } from "./services/api"; // Import the new API service
-// import type{ ChatResponse, Chat, Message } from "./types";
-
-// // Helper function to find the next available ID
-// const getNextId = (chats: Chat[]) => {
-//   return chats.reduce((max, chat) => (chat.id > max ? chat.id : max), 0) + 1;
-// };
-
-// // Mock Initial Data
-// const initialChats: Chat[] = [
-//   {
-//     id: 1,
-//     name: "General Health Check",
-//     messages: [
-//       { id: 101, text: "Hi Kibo, what is the best way to stay hydrated?", sender: "user" },
-//       { id: 102, text: "The best way is to drink water regularly throughout the day. Your backend knowledge base suggests starting with 8 glasses.", sender: "ai" },
-//     ],
-//   },
-//   { id: 2, name: "Nutrition Plan", messages: [] },
-// ];
-
-// // --- App Component ---
-// export default function App() {
-//   const [chats, setChats] = useState<Chat[]>(initialChats);
-//   const [activeChatId, setActiveChatId] = useState<number>(initialChats[0].id);
-//   const [currentPage, setCurrentPage] = useState<"chat" | "bodyrecord">("chat");
-//   const [isLoading, setIsLoading] = useState(false);
-  
-//   // Memoize the active chat object for easy access
-//   const activeChat = useMemo(() => chats.find(c => c.id === activeChatId), [chats, activeChatId]);
-
-//   // --- Chat Management Handlers ---
-
-//   const handleNewChat = () => {
-//     const newId = getNextId(chats);
-//     const newChat: Chat = {
-//       id: newId,
-//       name: `New Chat ${newId}`,
-//       messages: [],
-//     };
-//     setChats(prev => [...prev, newChat]);
-//     setActiveChatId(newId);
-//     setCurrentPage("chat");
-//   };
-
-//   const handleSelectChat = (id: number) => {
-//     setActiveChatId(id);
-//     setCurrentPage("chat");
-//   };
-
-//   const handleDeleteChat = (id: number) => {
-//     setChats(prev => prev.filter(c => c.id !== id));
-//     // If we deleted the active chat, select the first one, or reset to 1 if empty
-//     if (activeChatId === id) {
-//       const remainingChats = chats.filter(c => c.id !== id);
-//       if (remainingChats.length > 0) {
-//         setActiveChatId(remainingChats[0].id);
-//       } 
-//       // else {
-//       //   // If all chats are gone, create a new one
-//       //   handleNewChat();
-//       // }
-//     }
-//   };
-  
-//   const handleRenameChat = (id: number, newTitle: string) => {
-//     setChats(prevChats => prevChats.map(chat => 
-//       chat.id === id ? { ...chat, name: newTitle } : chat
-//     ));
-//   };
-  
-//   const handleNavigate = (page: "chat" | "bodyrecord") => {
-//       setCurrentPage(page);
-//   };
-
-//   /**
-//    * Updates the messages array for the currently active chat locally.
-//    * This is typically called first by the ChatBox to show the user's message immediately.
-//    */
-//   const handleUpdateMessages = (updatedMessages: Message[]) => {
-//     setChats(prevChats => 
-//       prevChats.map(chat => 
-//         chat.id === activeChatId ? { ...chat, messages: updatedMessages } : chat
-//       )
-//     );
-//   };
-
-//   /**
-//    * Handles sending the message to the Go backend and processing the response using the API service.
-//    */
-//   const handleSendMessage = async (userMessage: string) => {
-//     if (!activeChat) return;
-
-//     // 1. Locally add user message (ChatBox already did this)
-//     let currentMessages = activeChat.messages;
-    
-//     // Safety check: ensure the user message is the last one before sending
-//     const lastMessage = currentMessages[currentMessages.length - 1];
-
-//     if (!lastMessage || lastMessage.text !== userMessage || lastMessage.sender !== 'user') {
-//         // Fallback: This shouldn't happen if ChatBox calls are correct
-//         const newUserMsg: Message = { id: Date.now(), text: userMessage, sender: "user" };
-//         currentMessages = [...currentMessages, newUserMsg];
-//         handleUpdateMessages(currentMessages);
-//     }
-    
-//     setIsLoading(true);
-
-//     try {
-//       // 2. Call the API service
-//       const res: ChatResponse = await sendMessage(userMessage, activeChatId);
-      
-//       const aiReply: Message = { 
-//           id: Date.now() + 1, // Ensure ID is unique
-//           text: res.reply, 
-//           sender: "ai" 
-//       };
-
-//       // 3. Update state with the AI's reply
-//       const updatedMessagesWithAi = [...currentMessages, aiReply];
-//       handleUpdateMessages(updatedMessagesWithAi);
-      
-//       // Auto-name the chat if it was newly created
-//       if (currentMessages.length === 1 && userMessage.length > 5 && activeChat.name.startsWith("New Chat")) {
-
-//            handleRenameChat(activeChatId, res.title);
-//       }
-
-//     } catch (error) {
-//       console.error("Error sending message:", error);
-      
-//       const errorMessage: Message = { 
-//           id: Date.now() + 1, 
-//           text: `Connection Error: Kibo could not reach the backend API. Please check the server status. Detail: ${error instanceof Error ? error.message : 'Unknown Error'}`, 
-//           sender: "ai" 
-//       };
-      
-//       // Add error message to the chat
-//       handleUpdateMessages([...currentMessages, errorMessage]);
-      
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-
-//   return (
-//     <div className="flex h-screen w-screen bg-gray-50 text-gray-800 font-sans">
-      
-//       <Sidebar 
-//         chats={chats}
-//         activeChatId={activeChatId}
-//         onNewChat={handleNewChat}
-//         onSelectChat={handleSelectChat}
-//         onDeleteChat={handleDeleteChat}
-//         onRenameChat={handleRenameChat}
-//         onNavigate={handleNavigate}
-//       />
-
-//       <main className="flex-1 flex flex-col overflow-hidden">
-        
-//         {/* Header/Title */}
-//         <header className="p-4 border-b bg-white shadow-sm flex items-center justify-between">
-//             <h1 className="text-xl font-bold text-green-700">
-//                 {currentPage === "chat" 
-//                     ? `💬 ${activeChat?.name || "Chat"}` 
-//                     : "🏋️ Body Record"}
-//             </h1>
-//             {isLoading && (
-//                  <div className="flex items-center text-green-500">
-//                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-//                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-//                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-//                     </svg>
-//                     Kibo is thinking...
-//                 </div>
-//             )}
-//         </header>
-
-//         {/* Content Area */}
-//         <div className="flex-1 overflow-y-auto">
-//             {currentPage === "chat" && activeChat ? (
-//                 // Pass a function to ChatBox that handles the API call
-//                 <ChatBox 
-//                     chat={activeChat} 
-//                     onUpdateMessages={handleUpdateMessages}
-//                     onSendMessage={handleSendMessage}
-//                     isLoading={isLoading}
-//                 />
-//             ) : 
-//             currentPage === "bodyrecord" ? (
-//                 // Render the functional BodyRecord component
-//                 <BodyRecord />
-//             ) : 
-//             (
-//                 <div className="p-8 text-center text-gray-500">
-//                     Please select a chat or create a new one.
-//                 </div>
-//             )}
-//         </div>
-//       </main>
-//     </div>
-//   );
-// }

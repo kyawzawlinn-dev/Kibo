@@ -21,6 +21,9 @@ func NewRouter(repo *bodyrecord.Repository, agent *chat2.ChatAgent, ui http.File
 	r.HandleFunc("/api/chat/{chat_id}", handlers.GetChat).Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/chat/{chat_id}", handlers.DeleteChat).Methods("DELETE", "OPTIONS")
 
+	// --- EMERGENCY ROUTES ---
+	r.HandleFunc("/api/emergency", handlers.HandleGetEmergencyCards).Methods("GET", "OPTIONS")
+
 	// --- HEALTH RECORD ROUTES ---
 	r.HandleFunc("/api/records/body", handlers.HandleGetBodyRecords).Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/records/body", handlers.HandleCreateBodyRecord).Methods("POST", "OPTIONS")
