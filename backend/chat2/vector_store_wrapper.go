@@ -58,8 +58,23 @@ func (s *VectorStore) Index(ctx context.Context, id, content string, metadata ma
 	return nil
 }
 
-// Search returns the content of the k most similar documents to the query.
-func (s *VectorStore) Search(ctx context.Context, queryText string, k int) ([]string, error) {
+// SearchResult is one retrieved knowledge base passage.
+type SearchResult struct {
+	Content    string
+	Source     string // knowledge base file the chunk came from
+	Similarity float32
+}
+
+// minSimilarity filters out passages that merely happen to be the
+// nearest neighbours of an unrelated query — they would pollute the
+// prompt and produce bogus citations. Tuned for nomic-embed-text,
+// where on-topic passages score ~0.6+ and off-topic ~0.5 and below
+// (measured with single-message queries; revisit if the KB grows).
+const minSimilarity = 0.6
+
+// Search returns the k most similar documents to the query that clear
+// the relevance threshold.
+func (s *VectorStore) Search(ctx context.Context, queryText string, k int) ([]SearchResult, error) {
 	// chromem errors if k exceeds the number of stored documents
 	if n := s.collection.Count(); k > n {
 		k = n
@@ -73,9 +88,17 @@ func (s *VectorStore) Search(ctx context.Context, queryText string, k int) ([]st
 		return nil, fmt.Errorf("vector search failed: %w", err)
 	}
 
-	out := make([]string, 0, len(results))
+	out := make([]SearchResult, 0, len(results))
 	for _, r := range results {
-		out = append(out, r.Content)
+		logger.Debug("[vector_store_wrapper.go/Search]:\tsimilarity=%.3f source=%s", r.Similarity, r.Metadata["source"])
+		if r.Similarity < minSimilarity {
+			continue
+		}
+		out = append(out, SearchResult{
+			Content:    r.Content,
+			Source:     r.Metadata["source"],
+			Similarity: r.Similarity,
+		})
 	}
 	return out, nil
 }

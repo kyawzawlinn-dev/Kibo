@@ -48,8 +48,9 @@ func NewRAGService(repo *bodyrecord.Repository, ollama *OllamaClient, vectorStor
 
 // Ask generates a reply for the agent prompt. When useRAG is set it
 // augments the prompt with the user's records and knowledge base
-// passages; otherwise it calls the LLM directly.
-func (s *RAGService) Ask(ctx context.Context, agentPrompt string, userID int64, useRAG bool, intent, service string) (string, error) {
+// passages retrieved for `query` (the raw user message — searching on
+// the full prompt with history dilutes retrieval badly).
+func (s *RAGService) Ask(ctx context.Context, agentPrompt, query string, userID int64, useRAG bool) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, generateTimeout)
 	defer cancel()
 
@@ -59,7 +60,7 @@ func (s *RAGService) Ask(ctx context.Context, agentPrompt string, userID int64, 
 	}
 
 	personalContext := s.retrievePersonalContext(ctx, userID)
-	knowledgeContext := s.retrieveKnowledgeContext(ctx, intent+" "+service+" "+agentPrompt)
+	knowledgeContext, sources := s.retrieveKnowledgeContext(ctx, query)
 
 	full := fmt.Sprintf(`%s
 ---
@@ -74,7 +75,17 @@ HEALTH KNOWLEDGE BASE PASSAGES:
 
 	logger.Debug("[rag_service.go/Ask]:\taugmented prompt:\n%s", full)
 
-	return s.ollama.Generate(ctx, ChatModel, full)
+	reply, err := s.ollama.Generate(ctx, ChatModel, full)
+	if err != nil {
+		return "", err
+	}
+
+	// Cite deterministically: the sources listed are exactly the
+	// passages that were retrieved — never up to the LLM.
+	if len(sources) > 0 {
+		reply += "\n\n📚 Sources: " + strings.Join(sources, ", ")
+	}
+	return reply, nil
 }
 
 // retrievePersonalContext summarizes the user's recent health records.
@@ -99,15 +110,33 @@ func (s *RAGService) retrievePersonalContext(ctx context.Context, userID int64) 
 	return sb.String()
 }
 
-// retrieveKnowledgeContext fetches relevant knowledge base passages.
-func (s *RAGService) retrieveKnowledgeContext(ctx context.Context, query string) string {
+// retrieveKnowledgeContext fetches relevant knowledge base passages
+// and the deduplicated source names they came from.
+func (s *RAGService) retrieveKnowledgeContext(ctx context.Context, query string) (string, []string) {
 	if s.vectorStore == nil {
-		return "No relevant passages found."
+		return "No relevant passages found.", nil
 	}
 
 	docs, err := s.vectorStore.Search(ctx, query, 4)
 	if err != nil || len(docs) == 0 {
-		return "No relevant passages found."
+		return "No relevant passages found.", nil
 	}
-	return strings.Join(docs, "\n---\n")
+
+	var passages []string
+	var sources []string
+	seen := map[string]bool{}
+	for _, d := range docs {
+		name := sourceName(d.Source)
+		passages = append(passages, fmt.Sprintf("[from: %s]\n%s", name, d.Content))
+		if name != "" && !seen[name] {
+			seen[name] = true
+			sources = append(sources, name)
+		}
+	}
+	return strings.Join(passages, "\n---\n"), sources
+}
+
+// sourceName turns "symptoms_fever.md" into "symptoms_fever".
+func sourceName(file string) string {
+	return strings.TrimSuffix(strings.TrimSpace(file), ".md")
 }

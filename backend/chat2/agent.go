@@ -73,7 +73,7 @@ func (a *ChatAgent) Answer(ctx context.Context, userID, chatID int64, message st
 
 	prompt := buildPrompt(cl, history, message)
 
-	resp, err := a.rag.Ask(ctx, prompt, userID, cl.NeedsRAG(), cl.Intent, cl.Service)
+	resp, err := a.rag.Ask(ctx, prompt, message, userID, cl.NeedsRAG())
 	if err != nil {
 		return "", fmt.Errorf("agent failed: %w", err)
 	}

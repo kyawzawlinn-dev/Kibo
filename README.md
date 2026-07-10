@@ -61,7 +61,7 @@ The plan, in order:
 **Phase 2 — The health companion**
 - [x] Log health data through chat ("I weighed 68kg today" → saved record)
 - [x] Emergency mode: instant, deterministic first-aid cards — no LLM in the loop
-- [ ] Answers cite their knowledge-base source
+- [x] Answers cite their knowledge-base source
 - [ ] Expanded curated offline health library (first aid, common conditions, medications)
 
 **Phase 3 — Built for the field**
