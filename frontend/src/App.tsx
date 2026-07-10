@@ -4,6 +4,7 @@ import ChatBox from "./components/ChatBox";
 import BodyRecord from "./components/BodyRecord";
 import Emergency from "./components/Emergency";
 import Library from "./components/Library";
+import Share from "./components/Share";
 
 import {
   createNewChat,
@@ -232,6 +233,8 @@ export default function App() {
               ? "Body record"
               : currentPage === "library"
               ? "Health library"
+              : currentPage === "share"
+              ? "Share on Wi-Fi"
               : "Emergency first aid"}
           </h1>
 
@@ -277,6 +280,8 @@ export default function App() {
             <Emergency />
           ) : currentPage === "library" ? (
             <Library />
+          ) : currentPage === "share" ? (
+            <Share />
           ) : (
             <div className="p-8 text-center text-night-400">
               Select a chat or create a new one.

@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -206,6 +208,38 @@ func (h *Handlers) SendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, ChatResponse{Reply: reply, Title: title})
+}
+
+// --- Share handlers ---
+
+// serverPort must match the address the server listens on (main.go).
+const serverPort = 8080
+
+// HandleGetShareInfo returns the LAN URLs other devices on the same
+// Wi-Fi can use to reach this Kibo instance.
+func (h *Handlers) HandleGetShareInfo(w http.ResponseWriter, r *http.Request) {
+	var urls []string
+
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		logger.Error("[handlers.go/HandleGetShareInfo]:\t%v", err)
+		http.Error(w, "Failed to read network interfaces", http.StatusInternalServerError)
+		return
+	}
+
+	for _, addr := range addrs {
+		ipnet, ok := addr.(*net.IPNet)
+		if !ok {
+			continue
+		}
+		ip := ipnet.IP.To4()
+		if ip == nil || ip.IsLoopback() || !ip.IsPrivate() {
+			continue
+		}
+		urls = append(urls, fmt.Sprintf("http://%s:%d", ip, serverPort))
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"urls": urls})
 }
 
 // --- Library handlers ---

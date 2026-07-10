@@ -8,6 +8,7 @@ import {
   BookOpen,
   Leaf,
   Menu,
+  Wifi,
   X,
 } from "lucide-react";
 import type { Chat, Page } from "../types";
@@ -207,6 +208,21 @@ export default function Sidebar({
         >
           <Activity size={16} className="shrink-0" />
           {expanded && "Body record"}
+        </button>
+
+        <button
+          onClick={() => onNavigate("share")}
+          title="Share on Wi-Fi"
+          className={`flex items-center rounded-lg text-sm transition-colors
+            ${expanded ? "w-full gap-2.5 px-3 py-2" : "justify-center w-9 h-9"}
+            ${
+              currentPage === "share"
+                ? "bg-mint/10 text-mint-soft font-medium"
+                : "text-night-200 hover:bg-night-800"
+            }`}
+        >
+          <Wifi size={16} className="shrink-0" />
+          {expanded && "Share on Wi-Fi"}
         </button>
       </div>
     </aside>

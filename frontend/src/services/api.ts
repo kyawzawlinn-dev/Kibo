@@ -97,6 +97,15 @@ export async function sendMessage(message: string, chatID: number): Promise<Chat
 }
 
 /* -----------------------------
+   LAN SHARING
+------------------------------ */
+export async function getShareInfo(): Promise<{ urls: string[] }> {
+  const res = await fetch(`${API_BASE_URL}/share`);
+  if (!res.ok) throw new Error("Failed to fetch share info");
+  return res.json();
+}
+
+/* -----------------------------
    HEALTH LIBRARY
 ------------------------------ */
 export async function getLibraryArticles(): Promise<LibraryArticle[]> {

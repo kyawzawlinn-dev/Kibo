@@ -48,6 +48,7 @@ Kibo is under active development. What works today:
 - ✅ **Log health data by chatting**: "yesterday I slept 5 hours and drank 2L" → saved records
 - ✅ **Emergency mode**: 8 first-aid cards embedded in the binary; red-flag chat messages get the card in ~13 ms, no LLM involved
 - ✅ Body record tracking: date-aware entries, combined trends chart, paginated history
+- ✅ **Share on Wi-Fi**: one laptop serves every phone on the local network — scan a QR code, no internet involved
 
 ## Roadmap
 
@@ -68,7 +69,7 @@ The plan, in order:
 - [x] Expanded curated offline health library (diarrhea/ORS, mosquito-borne fevers, wound care, respiratory infections, pregnancy, child nutrition, water safety, mental wellbeing)
 
 **Phase 3 — Built for the field**
-- [ ] LAN sharing: one laptop serves the whole household or clinic over local Wi-Fi
+- [x] LAN sharing: one laptop serves the whole household or clinic over local Wi-Fi
 - [ ] Printable health summary to bring to a doctor
 - [ ] CSV export/import of health records (backup, device migration, spreadsheets)
 - [ ] Import from Apple Health (export.xml) and Google Takeout

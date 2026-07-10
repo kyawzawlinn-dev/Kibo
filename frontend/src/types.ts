@@ -1,6 +1,6 @@
 export type Sender = "user" | "ai";
 
-export type Page = "chat" | "bodyrecord" | "emergency" | "library";
+export type Page = "chat" | "bodyrecord" | "emergency" | "library" | "share";
 
 export interface EmergencyCard {
   id: string;
