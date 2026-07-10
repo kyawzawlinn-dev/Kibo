@@ -5,6 +5,7 @@ import (
 	"Kibo/backend/bodyrecord"
 	"Kibo/backend/chat2"
 	"Kibo/backend/db"
+	"Kibo/backend/library"
 	"Kibo/backend/webui"
 	"context"
 	"log"
@@ -43,10 +44,15 @@ func main() {
 
 	// Load knowledge base (unchanged chunks are skipped, so this is fast
 	// after the first run)
+	const kbDir = "../knowledge_base/health"
 	loader := chat2.NewKnowledgeLoader(vectorStore, 500)
-	if err := loader.LoadFolder(ctx, "../knowledge_base/health"); err != nil {
+	if err := loader.LoadFolder(ctx, kbDir); err != nil {
 		logger.Warn("[main.go]:\tFailed to load knowledge base: %v", err)
 	}
+
+	// Health library (read + add articles from the UI; new articles are
+	// indexed live through the loader)
+	lib := library.New(kbDir, loader)
 
 	// RAG + Agent
 	ragService := chat2.NewRAGService(repo, ollamaClient, vectorStore)
@@ -57,7 +63,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load embedded frontend: %v", err)
 	}
-	router := api.NewRouter(repo, agent, ui)
+	router := api.NewRouter(repo, agent, lib, ui)
 
 	corsHandler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},

@@ -1,4 +1,4 @@
-import type { BodyRecord, ChatResponse, DietRecord, EmergencyCard } from "../types";
+import type { BodyRecord, ChatResponse, DietRecord, EmergencyCard, LibraryArticle } from "../types";
 
 export interface NewChatResponse {
   chat_id: number;
@@ -93,6 +93,32 @@ export async function sendMessage(message: string, chatID: number): Promise<Chat
     throw new Error(`Failed to get AI reply. Status: ${res.status}. Detail: ${txt}`);
   }
 
+  return res.json();
+}
+
+/* -----------------------------
+   HEALTH LIBRARY
+------------------------------ */
+export async function getLibraryArticles(): Promise<LibraryArticle[]> {
+  const res = await fetch(`${API_BASE_URL}/library`);
+  if (!res.ok) throw new Error("Failed to fetch library");
+  return res.json();
+}
+
+export async function addLibraryArticle(
+  title: string,
+  content: string
+): Promise<LibraryArticle> {
+  const res = await fetch(`${API_BASE_URL}/library`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, content }),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(txt.trim() || "Failed to save article");
+  }
   return res.json();
 }
 

@@ -43,7 +43,8 @@ Kibo is under active development. What works today:
 
 - ✅ **Single-binary app**: one Go executable serves the UI and API — no Docker, no Node at runtime
 - ✅ Multi-chat conversations with a local LLM (auto-titled, per-chat memory that survives restarts)
-- ✅ RAG pipeline with **source citations** and a relevance threshold — answers grounded in a 14-article offline health library
+- ✅ RAG pipeline with **source citations** and a relevance threshold — answers grounded in a 15-article offline health library
+- ✅ **Library page**: read every article Kibo cites, search them, and add your own from the UI — new articles are indexed live, no restart
 - ✅ **Log health data by chatting**: "yesterday I slept 5 hours and drank 2L" → saved records
 - ✅ **Emergency mode**: 8 first-aid cards embedded in the binary; red-flag chat messages get the card in ~13 ms, no LLM involved
 - ✅ Body record tracking: date-aware entries, combined trends chart, paginated history

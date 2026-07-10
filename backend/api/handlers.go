@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"Kibo/backend/chat2"
 	"Kibo/backend/emergency"
 	logger "Kibo/backend/kibo_utils"
+	"Kibo/backend/library"
 
 	"github.com/gorilla/mux"
 )
@@ -19,15 +21,17 @@ const demoUserID = int64(2)
 
 // Handlers holds dependencies for HTTP handlers
 type Handlers struct {
-	repo  *bodyrecord.Repository
-	agent *chat2.ChatAgent
+	repo    *bodyrecord.Repository
+	agent   *chat2.ChatAgent
+	library *library.Library
 }
 
 // NewHandlers creates a new Handlers struct
-func NewHandlers(repo *bodyrecord.Repository, agent *chat2.ChatAgent) *Handlers {
+func NewHandlers(repo *bodyrecord.Repository, agent *chat2.ChatAgent, lib *library.Library) *Handlers {
 	return &Handlers{
-		repo:  repo,
-		agent: agent,
+		repo:    repo,
+		agent:   agent,
+		library: lib,
 	}
 }
 
@@ -202,6 +206,47 @@ func (h *Handlers) SendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, ChatResponse{Reply: reply, Title: title})
+}
+
+// --- Library handlers ---
+
+// HandleGetLibrary returns all health library articles.
+func (h *Handlers) HandleGetLibrary(w http.ResponseWriter, r *http.Request) {
+	articles, err := h.library.List()
+	if err != nil {
+		logger.Error("[handlers.go/HandleGetLibrary]:\t%v", err)
+		http.Error(w, "Failed to load library", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, articles)
+}
+
+// HandleAddLibraryArticle saves a new article and indexes it live.
+func (h *Handlers) HandleAddLibraryArticle(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Title   string `json:"title"`
+		Content string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	article, err := h.library.Add(r.Context(), body.Title, body.Content)
+	switch {
+	case errors.Is(err, library.ErrInvalid):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	case errors.Is(err, library.ErrExists):
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	case err != nil:
+		logger.Error("[handlers.go/HandleAddLibraryArticle]:\t%v", err)
+		http.Error(w, "Failed to save article", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, article)
 }
 
 // --- Emergency handlers ---

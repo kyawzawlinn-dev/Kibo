@@ -5,6 +5,7 @@ import {
   Edit3,
   Activity,
   AlertTriangle,
+  BookOpen,
   Leaf,
   Menu,
   X,
@@ -176,6 +177,21 @@ export default function Sidebar({
         >
           <AlertTriangle size={16} className="shrink-0" />
           {expanded && "Emergency"}
+        </button>
+
+        <button
+          onClick={() => onNavigate("library")}
+          title="Health library"
+          className={`flex items-center rounded-lg text-sm transition-colors
+            ${expanded ? "w-full gap-2.5 px-3 py-2" : "justify-center w-9 h-9"}
+            ${
+              currentPage === "library"
+                ? "bg-mint/10 text-mint-soft font-medium"
+                : "text-night-200 hover:bg-night-800"
+            }`}
+        >
+          <BookOpen size={16} className="shrink-0" />
+          {expanded && "Library"}
         </button>
 
         <button

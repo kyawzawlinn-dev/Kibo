@@ -6,13 +6,14 @@ import (
 
 	"Kibo/backend/bodyrecord"
 	"Kibo/backend/chat2"
+	"Kibo/backend/library"
 
 	"github.com/gorilla/mux"
 )
 
-func NewRouter(repo *bodyrecord.Repository, agent *chat2.ChatAgent, ui http.FileSystem) http.Handler {
+func NewRouter(repo *bodyrecord.Repository, agent *chat2.ChatAgent, lib *library.Library, ui http.FileSystem) http.Handler {
 	r := mux.NewRouter()
-	handlers := NewHandlers(repo, agent)
+	handlers := NewHandlers(repo, agent, lib)
 
 	// --- CHAT ROUTES ---
 	r.HandleFunc("/api/chat/{chat_id}/message", handlers.SendMessage).Methods("POST", "OPTIONS")
@@ -20,6 +21,10 @@ func NewRouter(repo *bodyrecord.Repository, agent *chat2.ChatAgent, ui http.File
 	r.HandleFunc("/api/chats", handlers.ListChats).Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/chat/{chat_id}", handlers.GetChat).Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/chat/{chat_id}", handlers.DeleteChat).Methods("DELETE", "OPTIONS")
+
+	// --- LIBRARY ROUTES ---
+	r.HandleFunc("/api/library", handlers.HandleGetLibrary).Methods("GET", "OPTIONS")
+	r.HandleFunc("/api/library", handlers.HandleAddLibraryArticle).Methods("POST", "OPTIONS")
 
 	// --- EMERGENCY ROUTES ---
 	r.HandleFunc("/api/emergency", handlers.HandleGetEmergencyCards).Methods("GET", "OPTIONS")

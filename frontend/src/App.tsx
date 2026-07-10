@@ -3,6 +3,7 @@ import Sidebar from "./components/Sidebar";
 import ChatBox from "./components/ChatBox";
 import BodyRecord from "./components/BodyRecord";
 import Emergency from "./components/Emergency";
+import Library from "./components/Library";
 
 import {
   createNewChat,
@@ -229,6 +230,8 @@ export default function App() {
               ? activeChat?.name ?? "Chat"
               : currentPage === "bodyrecord"
               ? "Body record"
+              : currentPage === "library"
+              ? "Health library"
               : "Emergency first aid"}
           </h1>
 
@@ -272,6 +275,8 @@ export default function App() {
             <BodyRecord />
           ) : currentPage === "emergency" ? (
             <Emergency />
+          ) : currentPage === "library" ? (
+            <Library />
           ) : (
             <div className="p-8 text-center text-night-400">
               Select a chat or create a new one.

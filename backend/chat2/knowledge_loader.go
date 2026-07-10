@@ -48,7 +48,7 @@ func (kl *KnowledgeLoader) LoadFolder(ctx context.Context, folderPath string) er
 		}
 
 		fullPath := filepath.Join(folderPath, f.Name())
-		err := kl.loadFile(ctx, fullPath)
+		err := kl.IndexFile(ctx, fullPath)
 		if err != nil {
 			log.Printf("⚠️ Failed to load file %s: %v", fullPath, err)
 		}
@@ -57,8 +57,10 @@ func (kl *KnowledgeLoader) LoadFolder(ctx context.Context, folderPath string) er
 	return nil
 }
 
-// loadFile reads a file, splits into chunks if needed, generates stable IDs, and indexes
-func (kl *KnowledgeLoader) loadFile(ctx context.Context, filePath string) error {
+// IndexFile reads a file, splits it into chunks, generates stable IDs,
+// and indexes it. Also used to make articles added at runtime (via the
+// Library page) searchable without a restart.
+func (kl *KnowledgeLoader) IndexFile(ctx context.Context, filePath string) error {
 	contentBytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)

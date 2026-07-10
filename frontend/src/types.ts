@@ -1,12 +1,18 @@
 export type Sender = "user" | "ai";
 
-export type Page = "chat" | "bodyrecord" | "emergency";
+export type Page = "chat" | "bodyrecord" | "emergency" | "library";
 
 export interface EmergencyCard {
   id: string;
   title: string;
   keywords: string[];
   body: string;
+}
+
+export interface LibraryArticle {
+  id: string; // citation name
+  title: string;
+  content: string;
 }
 
 export interface Message {
