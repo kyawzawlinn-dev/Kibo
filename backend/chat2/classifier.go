@@ -25,7 +25,7 @@ func (c Classification) NeedsRAG() bool {
 }
 
 var validIntents = map[string]bool{
-	"GENERAL": true, "DEFINE_TERM": true,
+	"GENERAL": true, "DEFINE_TERM": true, "LOG_RECORD": true,
 	"HEALTH_SYMPTOM": true, "HEALTH_MEDICATION": true, "HEALTH_INFO": true,
 }
 
@@ -38,6 +38,7 @@ const classifierPrompt = `Classify the user's message.
 
 INTENT must be ONE of:
 - GENERAL            (greetings, chit-chat, anything not health-related)
+- LOG_RECORD         (stating a measurement to record: "I weighed 68kg today", "slept 6 hours", "drank 2L of water")
 - DEFINE_TERM        (asking what a medical/health term means)
 - HEALTH_SYMPTOM     (describing symptoms or asking about them)
 - HEALTH_MEDICATION  (asking about medicines or dosages)
@@ -45,8 +46,16 @@ INTENT must be ONE of:
 
 SERVICE must be ONE of: EXPLAIN, INSTRUCT, TROUBLESHOOT, SUGGEST, SUMMARIZE, WARN
 
+Rule: if the user STATES measurements with numbers (weight, sleep hours,
+water, exercise) without asking a question, it is LOG_RECORD — even if
+they add commentary like "only 5 hours". Choose HEALTH_* only when they
+ASK something.
+
+Examples:
+"yesterday I slept 5 hours and drank 2 liters of water" -> LOG_RECORD,SUMMARIZE
+"why do I sleep so badly?" -> HEALTH_SYMPTOM,EXPLAIN
+
 Reply with exactly two labels separated by a comma, nothing else.
-Example reply: HEALTH_SYMPTOM,EXPLAIN
 
 User message: %s
 Reply:`

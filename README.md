@@ -59,7 +59,7 @@ The plan, in order:
 - [x] Remove legacy `chat/` package and dead code
 
 **Phase 2 — The health companion**
-- [ ] Log health data through chat ("I weighed 68kg today" → saved record)
+- [x] Log health data through chat ("I weighed 68kg today" → saved record)
 - [ ] Emergency mode: instant, deterministic first-aid cards — no LLM in the loop
 - [ ] Answers cite their knowledge-base source
 - [ ] Expanded curated offline health library (first aid, common conditions, medications)

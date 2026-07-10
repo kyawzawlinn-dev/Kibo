@@ -23,6 +23,7 @@ type ChatAgent struct {
 	rag        *RAGService
 	ollama     *OllamaClient
 	classifier *Classifier
+	logger     *RecordLogger
 	repo       *bodyrecord.Repository
 }
 
@@ -31,6 +32,7 @@ func NewChatAgent(rag *RAGService, ollama *OllamaClient, repo *bodyrecord.Reposi
 		rag:        rag,
 		ollama:     ollama,
 		classifier: NewClassifier(ollama),
+		logger:     NewRecordLogger(ollama, repo),
 		repo:       repo,
 	}
 }
@@ -41,6 +43,18 @@ func NewChatAgent(rag *RAGService, ollama *OllamaClient, repo *bodyrecord.Reposi
 func (a *ChatAgent) Answer(ctx context.Context, userID, chatID int64, message string) (string, error) {
 	cl := a.classifier.Classify(ctx, message)
 	logger.Info("[agent.go/Answer]:\tintent=%s service=%s useRAG=%v", cl.Intent, cl.Service, cl.NeedsRAG())
+
+	// "I weighed 68kg today" -> save a record and confirm. On
+	// extraction failure, reply deterministically instead of falling
+	// through to the LLM — a conversational reply here tends to
+	// *pretend* the record was saved, which is worse than asking the
+	// user to rephrase.
+	if cl.Intent == "LOG_RECORD" {
+		if reply, ok := a.logger.TryLog(ctx, userID, message); ok {
+			return reply, nil
+		}
+		return `I couldn't read a measurement from that. Try something like: "weight 68.5 kg", "slept 7 hours", or "drank 2L of water yesterday".`, nil
+	}
 
 	history, err := a.repo.GetRecentChatHistory(ctx, chatID, historyWindow)
 	if err != nil {
