@@ -2,6 +2,7 @@
 # Kibo launcher — one command, no need to know the build flow.
 #
 #   ./kibo.sh          build everything and run the app (production)
+#   ./kibo.sh setup    download all dependencies; report success or what to install
 #   ./kibo.sh dev      run with hot reload (backend + frontend dev server)
 #   ./kibo.sh build    just build the kibo binary
 #   ./kibo.sh check    check that all requirements are installed
@@ -90,6 +91,75 @@ case "${1:-run}" in
     echo "All requirements present. Run ./kibo.sh to build and start."
     ;;
 
+  setup)
+    echo "🌿 Kibo setup — downloading dependencies"
+    echo ""
+    OS="$(uname -s)"
+    ready=1
+
+    # --- Go: download modules ---
+    if command -v go >/dev/null 2>&1; then
+      echo "✅ Go        $(go version | awk '{print $3}')"
+      echo "   ↓ downloading Go modules…"
+      (cd backend && go mod download)
+    else
+      ready=0
+      echo "❌ Go        not installed"
+      case "$OS" in
+        Darwin) echo "   → brew install go   (or download https://go.dev/dl/)" ;;
+        Linux)  echo "   → https://go.dev/dl/  — unpack to /usr/local/go and add /usr/local/go/bin to PATH" ;;
+        *)      echo "   → https://go.dev/dl/" ;;
+      esac
+    fi
+
+    # --- Node: install frontend packages ---
+    if command -v npm >/dev/null 2>&1; then
+      echo "✅ Node      $(node --version)"
+      echo "   ↓ installing frontend packages…"
+      (cd frontend && npm install)
+    else
+      ready=0
+      echo "❌ Node/npm  not installed  (needed to build the UI)"
+      case "$OS" in
+        Darwin) echo "   → brew install node   (or download https://nodejs.org)" ;;
+        *)      echo "   → https://nodejs.org" ;;
+      esac
+    fi
+
+    # --- Ollama: start and pull models ---
+    if command -v ollama >/dev/null 2>&1; then
+      echo "✅ Ollama    installed"
+      if ! pgrep -x ollama >/dev/null; then
+        ollama serve >/dev/null 2>&1 &
+        sleep 3
+      fi
+      for model in "$CHAT_MODEL" "$EMBED_MODEL"; do
+        if ollama list | grep -q "$model"; then
+          echo "   ✓ model $model present"
+        else
+          echo "   ↓ pulling model $model…"
+          ollama pull "$model"
+        fi
+      done
+    else
+      ready=0
+      echo "❌ Ollama    not installed"
+      case "$OS" in
+        Darwin) echo "   → download https://ollama.com/download   (or brew install ollama)" ;;
+        Linux)  echo "   → curl -fsSL https://ollama.com/install.sh | sh" ;;
+        *)      echo "   → https://ollama.com" ;;
+      esac
+    fi
+
+    echo ""
+    if [ "$ready" -eq 1 ]; then
+      echo "✅ Setup complete. Run ./kibo.sh to build and start."
+    else
+      echo "❌ Setup incomplete. Install the tools marked ❌ above (paths shown), then run ./kibo.sh setup again."
+      exit 1
+    fi
+    ;;
+
   run)
     check_requirements
     check_ollama
@@ -127,7 +197,7 @@ case "${1:-run}" in
     ;;
 
   *)
-    echo "Usage: ./kibo.sh [run|dev|build|check|stop]"
+    echo "Usage: ./kibo.sh [run|setup|dev|build|check|stop]"
     exit 1
     ;;
 esac

@@ -51,14 +51,26 @@ Notable choices: the frontend is embedded with `go:embed` and the vector store r
 
 ## Quick start
 
-Install [Go](https://go.dev/dl/), [Node.js](https://nodejs.org) (build only), and [Ollama](https://ollama.com). The script checks them, pulls the AI models if missing, builds, and runs:
+Install [Go](https://go.dev/dl/), [Node.js](https://nodejs.org) (build only), and [Ollama](https://ollama.com), then let the launcher handle the rest.
+
+**macOS / Linux:**
 
 ```bash
+./kibo.sh setup    # download all dependencies + AI models; reports what to install if anything's missing
 ./kibo.sh          # build and run → http://localhost:8080
-./kibo.sh check    # verify all requirements are installed
 ./kibo.sh dev      # hot-reload dev mode → http://localhost:5173
+./kibo.sh check    # verify requirements without downloading
 ./kibo.sh stop     # stop anything left running
 ```
+
+**Windows (PowerShell):** the same commands via `kibo.ps1`:
+
+```powershell
+.\kibo.ps1 setup   # download dependencies + AI models
+.\kibo.ps1         # build and run → http://localhost:8080
+```
+
+(Prefer bash on Windows? `kibo.sh` also runs in Git Bash or WSL.)
 
 The first run needs internet once (models, npm packages). After that Kibo is fully offline — all data stays in `data/`, and Node is never needed at runtime.
 
