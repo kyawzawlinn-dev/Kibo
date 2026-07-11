@@ -4,12 +4,48 @@
 #   ./kibo.sh          build everything and run the app (production)
 #   ./kibo.sh dev      run with hot reload (backend + frontend dev server)
 #   ./kibo.sh build    just build the kibo binary
+#   ./kibo.sh check    check that all requirements are installed
 #   ./kibo.sh stop     stop anything kibo left running
 set -e
 cd "$(dirname "$0")"
 
 CHAT_MODEL="llama3.2"
 EMBED_MODEL="nomic-embed-text"
+
+# check_requirements verifies the toolchain is present. It does not
+# install Go/Node/Ollama automatically — those are system-wide and
+# platform-specific — but tells you exactly what's missing and where
+# to get it. Model downloads and npm install are handled later.
+check_requirements() {
+  local missing=0
+
+  if command -v go >/dev/null 2>&1; then
+    echo "✅ Go        $(go version | awk '{print $3}')"
+  else
+    echo "❌ Go        not found — install from https://go.dev/dl/"
+    missing=1
+  fi
+
+  if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
+    echo "✅ Node      $(node --version)"
+  else
+    echo "❌ Node/npm  not found — install from https://nodejs.org (build only)"
+    missing=1
+  fi
+
+  if command -v ollama >/dev/null 2>&1; then
+    echo "✅ Ollama    installed"
+  else
+    echo "❌ Ollama    not found — install from https://ollama.com"
+    missing=1
+  fi
+
+  if [ "$missing" -ne 0 ]; then
+    echo ""
+    echo "Install the missing tools above, then run ./kibo.sh again."
+    exit 1
+  fi
+}
 
 check_ollama() {
   if ! command -v ollama >/dev/null 2>&1; then
@@ -48,7 +84,14 @@ build_binary() {
 }
 
 case "${1:-run}" in
+  check)
+    check_requirements
+    echo ""
+    echo "All requirements present. Run ./kibo.sh to build and start."
+    ;;
+
   run)
+    check_requirements
     check_ollama
     build_ui
     build_binary
@@ -59,6 +102,7 @@ case "${1:-run}" in
     ;;
 
   dev)
+    check_requirements
     check_ollama
     echo ""
     echo "🌿 Dev mode with hot reload (Ctrl+C stops everything)"
@@ -71,6 +115,7 @@ case "${1:-run}" in
     ;;
 
   build)
+    check_requirements
     build_ui
     build_binary
     ;;
@@ -82,7 +127,7 @@ case "${1:-run}" in
     ;;
 
   *)
-    echo "Usage: ./kibo.sh [run|dev|build|stop]"
+    echo "Usage: ./kibo.sh [run|dev|build|check|stop]"
     exit 1
     ;;
 esac
