@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import type { BodyRecord as BodyRecordType } from "../types";
 import { getBodyRecords, saveDayRecords, importRecordsCSV, exportRecordsUrl } from "../services/api";
 import { CalendarDays, Download, Upload } from "lucide-react";
-import RecordChart from "./RecordChart"; // Import the new chart component
+import RecordChart from "./RecordChart";
+import DoctorSummary from "./DoctorSummary";
+import HealthLog from "./HealthLog";
 
 // List of all supported record types for the form and trend charts.
 // Chart colors are a validated categorical palette for the dark surface.
@@ -20,11 +22,10 @@ const todayStr = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-export default function BodyRecord() {
+export default function Health() {
   const [records, setRecords] = useState<BodyRecordType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const importInput = useRef<HTMLInputElement>(null);
 
@@ -192,82 +193,6 @@ export default function BodyRecord() {
     </div>
   );
 
-  // Newest first, paginated
-  const PAGE_SIZE = 10;
-  const sortedRecords = [...records].sort(
-    (a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()
-  );
-  const totalPages = Math.max(1, Math.ceil(sortedRecords.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageRecords = sortedRecords.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-
-  const RecordList = (
-    <div className="bg-night-850 border border-night-800 p-6 rounded-xl">
-      <h3 className="text-xl font-medium mb-4 text-mint-soft">Recent records</h3>
-
-      {loading && <p className="text-night-400">Loading records...</p>}
-
-      {!loading && records.length === 0 && (
-        <p className="text-night-400 italic">No records tracked yet. Add one above.</p>
-      )}
-
-      {!loading && records.length > 0 && (
-        <>
-          <ul className="space-y-3">
-            {pageRecords.map((record) => (
-              <li
-                key={record.id}
-                className="flex justify-between items-center p-3 border-b border-night-800 last:border-b-0 hover:bg-night-800/60 rounded-lg transition"
-              >
-                <div className="flex flex-col">
-                  <span className="font-medium text-night-50">{record.recordType}</span>
-                  <span className="text-xs text-night-400">
-                      {record.timestamp ? new Date(record.timestamp).toLocaleString() : 'N/A'}
-                  </span>
-                </div>
-                <div className="text-lg font-medium text-mint">
-                  {record.value} {record.unit}
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-night-800">
-              <button
-                onClick={() => setPage(safePage - 1)}
-                disabled={safePage <= 1}
-                className={`px-3 py-1.5 rounded-lg border border-night-700 text-sm ${
-                  safePage <= 1
-                    ? "text-night-500 opacity-50 cursor-not-allowed"
-                    : "text-night-200 hover:bg-night-800"
-                }`}
-              >
-                Previous
-              </button>
-
-              <span className="text-sm text-night-400">
-                Page {safePage} of {totalPages}
-              </span>
-
-              <button
-                onClick={() => setPage(safePage + 1)}
-                disabled={safePage >= totalPages}
-                className={`px-3 py-1.5 rounded-lg border border-night-700 text-sm ${
-                  safePage >= totalPages
-                    ? "text-night-500 opacity-50 cursor-not-allowed"
-                    : "text-night-200 hover:bg-night-800"
-                }`}
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-
   const handleImportFile = async (file: File) => {
     setImportMsg(null);
     try {
@@ -286,9 +211,10 @@ export default function BodyRecord() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between border-b border-night-800 pb-3 mb-2">
-        <h2 className="text-2xl font-medium text-night-50">Health and body record</h2>
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
+      {/* Page header */}
+      <div className="flex items-center justify-between border-b border-night-800 pb-3 print:hidden">
+        <h2 className="text-2xl font-medium text-night-50">Health</h2>
         <div className="flex gap-2">
           <a
             href={exportRecordsUrl()}
@@ -316,15 +242,19 @@ export default function BodyRecord() {
           />
         </div>
       </div>
-      {importMsg && <p className="text-sm text-mint-soft mb-4">{importMsg}</p>}
-      <div className="mb-4" />
-      
-      {RecordForm}
-      
-      {RecordChartSection}
-      
-      {RecordList}
-      
+      {importMsg && <p className="text-sm text-mint-soft print:hidden">{importMsg}</p>}
+
+      {/* Health log at the top */}
+      <HealthLog />
+
+      {/* Daily record + trends */}
+      <div className="space-y-6 print:hidden">
+        {RecordForm}
+        {RecordChartSection}
+      </div>
+
+      {/* Doctor summary (prints) */}
+      <DoctorSummary />
     </div>
   );
 }

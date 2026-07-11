@@ -6,7 +6,6 @@ import {
   Activity,
   AlertTriangle,
   BookOpen,
-  FileText,
   Leaf,
   Menu,
   Wifi,
@@ -220,33 +219,18 @@ export default function Sidebar({
         </button>
 
         <button
-          onClick={() => onNavigate("bodyrecord")}
-          title="Body record"
+          onClick={() => onNavigate("health")}
+          title="Health"
           className={`flex items-center rounded-lg text-sm transition-colors
             ${expanded ? "w-full gap-2.5 px-3 py-2" : "justify-center w-9 h-9"}
             ${
-              currentPage === "bodyrecord"
+              currentPage === "health"
                 ? "bg-mint/10 text-mint-soft font-medium"
                 : "text-night-200 hover:bg-night-800"
             }`}
         >
           <Activity size={16} className="shrink-0" />
-          {expanded && "Body record"}
-        </button>
-
-        <button
-          onClick={() => onNavigate("summary")}
-          title="Doctor summary"
-          className={`flex items-center rounded-lg text-sm transition-colors
-            ${expanded ? "w-full gap-2.5 px-3 py-2" : "justify-center w-9 h-9"}
-            ${
-              currentPage === "summary"
-                ? "bg-mint/10 text-mint-soft font-medium"
-                : "text-night-200 hover:bg-night-800"
-            }`}
-        >
-          <FileText size={16} className="shrink-0" />
-          {expanded && "Doctor summary"}
+          {expanded && "Health"}
         </button>
 
         <button

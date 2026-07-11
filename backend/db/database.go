@@ -87,6 +87,16 @@ func createTables(db *sql.DB) error {
 			message TEXT NOT NULL,
 			timestamp DATETIME NOT NULL
 		);`,
+		`CREATE TABLE IF NOT EXISTS health_log (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			date TEXT NOT NULL,
+			title TEXT NOT NULL,
+			severity TEXT DEFAULT '',
+			notes TEXT DEFAULT '',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
 		`CREATE TABLE IF NOT EXISTS user_settings (
 			user_id INTEGER PRIMARY KEY,
 			theme TEXT DEFAULT 'light',

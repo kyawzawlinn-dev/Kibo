@@ -1,6 +1,14 @@
 export type Sender = "user" | "ai";
 
-export type Page = "chat" | "bodyrecord" | "emergency" | "library" | "share" | "summary" | "profiles";
+export type Page = "chat" | "health" | "emergency" | "library" | "share" | "profiles";
+
+export interface HealthLogEntry {
+  id: number;
+  date: string; // YYYY-MM-DD
+  title: string;
+  severity: string; // "", mild, moderate, severe
+  notes: string;
+}
 
 export interface Profile {
   id: number;

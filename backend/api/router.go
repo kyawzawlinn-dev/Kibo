@@ -36,6 +36,12 @@ func NewRouter(repo *bodyrecord.Repository, agent *chat2.ChatAgent, lib *library
 	r.HandleFunc("/api/library/{id}", handlers.HandleUpdateLibraryArticle).Methods("PUT", "OPTIONS")
 	r.HandleFunc("/api/library/{id}", handlers.HandleDeleteLibraryArticle).Methods("DELETE", "OPTIONS")
 
+	// --- HEALTH LOG ROUTES ---
+	r.HandleFunc("/api/health-log", handlers.HandleGetHealthLog).Methods("GET", "OPTIONS")
+	r.HandleFunc("/api/health-log", handlers.HandleAddHealthLogEntry).Methods("POST", "OPTIONS")
+	r.HandleFunc("/api/health-log/{id}", handlers.HandleUpdateHealthLogEntry).Methods("PUT", "OPTIONS")
+	r.HandleFunc("/api/health-log/{id}", handlers.HandleDeleteHealthLogEntry).Methods("DELETE", "OPTIONS")
+
 	// --- EMERGENCY ROUTES ---
 	r.HandleFunc("/api/emergency", handlers.HandleGetEmergencyCards).Methods("GET", "OPTIONS")
 

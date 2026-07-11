@@ -61,6 +61,17 @@ type ChatHistory struct {
 	Timestamp time.Time     `json:"timestamp"`
 }
 
+// HealthLogEntry is one episode in a profile's health history —
+// a symptom or event the user recorded manually.
+type HealthLogEntry struct {
+	ID       int64  `json:"id"`
+	UserID   int64  `json:"user_id"`
+	Date     string `json:"date"` // YYYY-MM-DD
+	Title    string `json:"title"`
+	Severity string `json:"severity"` // "", mild, moderate, severe
+	Notes    string `json:"notes"`
+}
+
 type UserSettings struct {
 	UserID   int64  `json:"user_id"`
 	Theme    string `json:"theme"`

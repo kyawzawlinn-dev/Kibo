@@ -1,4 +1,4 @@
-import type { BodyRecord, ChatResponse, DietRecord, EmergencyCard, LibraryArticle, Profile } from "../types";
+import type { BodyRecord, ChatResponse, DietRecord, EmergencyCard, LibraryArticle, Profile, HealthLogEntry } from "../types";
 
 export interface NewChatResponse {
   chat_id: number;
@@ -144,6 +144,42 @@ export async function sendMessage(message: string, chatID: number): Promise<Chat
   }
 
   return res.json();
+}
+
+/* -----------------------------
+   HEALTH LOG (episode history)
+------------------------------ */
+export async function getHealthLog(): Promise<HealthLogEntry[]> {
+  const res = await apiFetch(`${API_BASE_URL}/health-log`);
+  if (!res.ok) throw new Error("Failed to fetch health log");
+  return (await res.json()) ?? [];
+}
+
+export async function addHealthLogEntry(
+  entry: Omit<HealthLogEntry, "id">
+): Promise<HealthLogEntry> {
+  const res = await apiFetch(`${API_BASE_URL}/health-log`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(entry),
+  });
+  if (!res.ok) throw new Error((await res.text()).trim() || "Failed to save episode");
+  return res.json();
+}
+
+export async function updateHealthLogEntry(entry: HealthLogEntry): Promise<HealthLogEntry> {
+  const res = await apiFetch(`${API_BASE_URL}/health-log/${entry.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(entry),
+  });
+  if (!res.ok) throw new Error((await res.text()).trim() || "Failed to update episode");
+  return res.json();
+}
+
+export async function deleteHealthLogEntry(id: number): Promise<void> {
+  const res = await apiFetch(`${API_BASE_URL}/health-log/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete episode");
 }
 
 /* -----------------------------

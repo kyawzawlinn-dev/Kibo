@@ -584,6 +584,88 @@ func (h *Handlers) HandleDeleteLibraryArticle(w http.ResponseWriter, r *http.Req
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "id": id})
 }
 
+// --- Health log handlers ---
+
+func (h *Handlers) HandleGetHealthLog(w http.ResponseWriter, r *http.Request) {
+	entries, err := h.repo.ListHealthLog(r.Context(), profileID(r))
+	if err != nil {
+		logger.Error("[handlers.go/HandleGetHealthLog]:\t%v", err)
+		http.Error(w, "Failed to load health log", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, entries)
+}
+
+// decodeHealthLogEntry reads and validates an episode from the body.
+func decodeHealthLogEntry(r *http.Request) (bodyrecord.HealthLogEntry, error) {
+	var e bodyrecord.HealthLogEntry
+	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
+		return e, err
+	}
+	e.UserID = profileID(r)
+	e.Title = strings.TrimSpace(e.Title)
+	e.Date = strings.TrimSpace(e.Date)
+	if e.Title == "" || e.Date == "" {
+		return e, errors.New("episode needs a date and a description")
+	}
+	if _, err := time.Parse("2006-01-02", e.Date); err != nil {
+		return e, errors.New("invalid date")
+	}
+	return e, nil
+}
+
+func (h *Handlers) HandleAddHealthLogEntry(w http.ResponseWriter, r *http.Request) {
+	entry, err := decodeHealthLogEntry(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id, err := h.repo.AddHealthLogEntry(r.Context(), entry)
+	if err != nil {
+		logger.Error("[handlers.go/HandleAddHealthLogEntry]:\t%v", err)
+		http.Error(w, "Failed to save episode", http.StatusInternalServerError)
+		return
+	}
+	entry.ID = id
+	writeJSON(w, http.StatusCreated, entry)
+}
+
+func (h *Handlers) HandleUpdateHealthLogEntry(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid id", http.StatusBadRequest)
+		return
+	}
+	entry, err := decodeHealthLogEntry(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	entry.ID = id
+
+	if err := h.repo.UpdateHealthLogEntry(r.Context(), entry); err != nil {
+		logger.Error("[handlers.go/HandleUpdateHealthLogEntry]:\t%v", err)
+		http.Error(w, "Failed to update episode", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, entry)
+}
+
+func (h *Handlers) HandleDeleteHealthLogEntry(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid id", http.StatusBadRequest)
+		return
+	}
+	if err := h.repo.DeleteHealthLogEntry(r.Context(), profileID(r), id); err != nil {
+		logger.Error("[handlers.go/HandleDeleteHealthLogEntry]:\t%v", err)
+		http.Error(w, "Failed to delete episode", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "id": id})
+}
+
 // --- Emergency handlers ---
 
 // HandleGetEmergencyCards returns the embedded first-aid cards.

@@ -72,7 +72,8 @@ export default function DoctorSummary() {
     days > 0 ? `last ${days} days` : "all recorded data";
 
   return (
-    <div className="p-6 max-w-3xl mx-auto print:p-0 print:max-w-none">
+    <div className="print:p-0 print:max-w-none">
+      <h3 className="text-lg font-medium text-mint-soft mb-3 print:hidden">Doctor summary</h3>
       {/* Controls — never printed */}
       <div className="flex items-center justify-between mb-4 print:hidden">
         <div className="flex rounded-lg border border-night-700 overflow-hidden">

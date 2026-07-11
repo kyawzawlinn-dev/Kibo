@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import ChatBox from "./components/ChatBox";
-import BodyRecord from "./components/BodyRecord";
+import Health from "./components/Health";
 import Emergency from "./components/Emergency";
 import Library from "./components/Library";
 import Share from "./components/Share";
-import DoctorSummary from "./components/DoctorSummary";
 
 import {
   createNewChat,
@@ -261,14 +260,12 @@ export default function App() {
           <h1 className="text-lg font-medium text-night-50">
             {currentPage === "chat"
               ? activeChat?.name ?? "Chat"
-              : currentPage === "bodyrecord"
-              ? "Body record"
+              : currentPage === "health"
+              ? "Health"
               : currentPage === "library"
               ? "Health library"
               : currentPage === "share"
               ? "Share on Wi-Fi"
-              : currentPage === "summary"
-              ? "Doctor summary"
               : currentPage === "profiles"
               ? "Profiles"
               : "Emergency first aid"}
@@ -310,16 +307,14 @@ export default function App() {
               onSendMessage={handleSendMessage}
               isLoading={isLoading}
             />
-          ) : currentPage === "bodyrecord" ? (
-            <BodyRecord />
+          ) : currentPage === "health" ? (
+            <Health />
           ) : currentPage === "emergency" ? (
             <Emergency />
           ) : currentPage === "library" ? (
             <Library />
           ) : currentPage === "share" ? (
             <Share />
-          ) : currentPage === "summary" ? (
-            <DoctorSummary />
           ) : currentPage === "profiles" ? (
             <Profiles
               profiles={profiles}
