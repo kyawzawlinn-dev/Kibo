@@ -151,7 +151,7 @@ switch ($Command) {
         Check-Requirements
         Ensure-Ollama
         Write-Host ""
-        Write-Host "Dev mode with hot reload — opening two windows:"
+        Write-Host "Dev mode with hot reload - opening two windows:"
         Write-Host "   backend  -> http://localhost:8080"
         Write-Host "   frontend -> http://localhost:5173"
         Write-Host "Close those windows (or run .\kibo.ps1 stop) to stop."
