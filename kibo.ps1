@@ -12,6 +12,13 @@ param([string]$Command = "run")
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
 
+# Reload PATH from the machine and user environment so tools installed
+# in this same session (e.g. just now via winget) are found without
+# having to open a new terminal.
+$machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+$userPath    = [System.Environment]::GetEnvironmentVariable("Path", "User")
+$env:Path    = @($machinePath, $userPath | Where-Object { $_ }) -join ";"
+
 $ChatModel  = "llama3.2"
 $EmbedModel = "nomic-embed-text"
 
