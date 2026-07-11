@@ -152,7 +152,10 @@ switch ($Command) {
         Write-Host ""
         Write-Host "Kibo is starting on http://localhost:8080 (Ctrl+C to stop)"
         Start-Job { Start-Sleep 2; Start-Process "http://localhost:8080" } | Out-Null
-        Push-Location backend; .\kibo.exe; Pop-Location
+        # try/finally so Ctrl+C still returns to the repo root instead
+        # of stranding the shell in backend\
+        Push-Location backend
+        try { .\kibo.exe } finally { Pop-Location }
     }
 
     "dev" {
