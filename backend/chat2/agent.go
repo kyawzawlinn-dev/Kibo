@@ -65,7 +65,12 @@ func (a *ChatAgent) Answer(ctx context.Context, userID, chatID int64, message st
 		if reply, ok := a.logger.TryLog(ctx, userID, message); ok {
 			return reply, nil, nil
 		}
-		return `I couldn't read a measurement from that. Try something like: "weight 68.5 kg", "slept 7 hours", or "drank 2L of water yesterday".`, nil, nil
+		// No real measurement found (often a misclassified symptom or
+		// question, especially with small models). Fall through to a
+		// normal grounded answer rather than a dead-end — and search the
+		// knowledge base, since it's probably a health question.
+		logger.Info("[agent.go/Answer]:\tLOG_RECORD had no measurement; answering normally")
+		cl.Intent = "HEALTH_INFO"
 	}
 
 	history, err := a.repo.GetRecentChatHistory(ctx, chatID, historyWindow)

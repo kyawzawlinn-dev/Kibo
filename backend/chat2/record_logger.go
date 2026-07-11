@@ -4,12 +4,40 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"Kibo/backend/bodyrecord"
 	logger "Kibo/backend/kibo_utils"
 )
+
+// numberRe finds the numeric values written in a message. A record is
+// only saved if its value actually appears here — a hard guard against
+// the model hallucinating measurements the user never gave (e.g. a
+// misclassified "my leg pain last night" must never save a weight).
+var numberRe = regexp.MustCompile(`\d+(?:\.\d+)?`)
+
+func messageNumbers(msg string) []float64 {
+	var out []float64
+	for _, s := range numberRe.FindAllString(msg, -1) {
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+func valueInMessage(v float64, nums []float64) bool {
+	for _, n := range nums {
+		if math.Abs(n-v) < 1e-9 {
+			return true
+		}
+	}
+	return false
+}
 
 // RecordLogger turns messages like "I weighed 68kg today" into saved
 // body records. Extraction uses one LLM call; the confirmation reply
@@ -76,8 +104,16 @@ func (l *RecordLogger) TryLog(ctx context.Context, userID int64, message string)
 		return "", false
 	}
 
+	nums := messageNumbers(message)
 	var saved []string
 	for _, rec := range records {
+		// Reject any value the user did not actually write — the model
+		// (especially small ones) invents plausible numbers otherwise.
+		if !valueInMessage(rec.Value, nums) {
+			logger.Warn("[record_logger.go/TryLog]:\tdropping hallucinated %s=%g (not in message)", rec.RecordType, rec.Value)
+			continue
+		}
+
 		br := bodyrecord.BodyRecord{
 			UserID:     userID,
 			RecordType: rec.RecordType,
