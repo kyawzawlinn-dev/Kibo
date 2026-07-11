@@ -74,6 +74,17 @@ Install [Go](https://go.dev/dl/), [Node.js](https://nodejs.org) (build only), an
 
 The first run needs internet once (models, npm packages). After that Kibo is fully offline — all data stays in `data/`, and Node is never needed at runtime.
 
+**Low-end hardware:** the default `llama3.2` (3B) needs ~2–3 GB of free RAM. On a weaker machine it may be slow or produce garbled replies — switch to the 1B model by setting `KIBO_CHAT_MODEL` before running:
+
+```bash
+KIBO_CHAT_MODEL=llama3.2:1b ./kibo.sh          # macOS / Linux
+```
+```powershell
+$env:KIBO_CHAT_MODEL="llama3.2:1b"; .\kibo.ps1  # Windows
+```
+
+Run `./kibo.sh setup` (or `.\kibo.ps1 setup`) with the same variable set so it pulls that model.
+
 ## Roadmap
 
 - [ ] AI-suggested health-log entries from chat (one-tap confirm, never auto-saved)

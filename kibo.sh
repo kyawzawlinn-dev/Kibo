@@ -10,8 +10,9 @@
 set -e
 cd "$(dirname "$0")"
 
-CHAT_MODEL="llama3.2"
-EMBED_MODEL="nomic-embed-text"
+# Models — override for weak hardware, e.g. KIBO_CHAT_MODEL=llama3.2:1b
+CHAT_MODEL="${KIBO_CHAT_MODEL:-llama3.2}"
+EMBED_MODEL="${KIBO_EMBED_MODEL:-nomic-embed-text}"
 
 # check_requirements verifies the toolchain is present. It does not
 # install Go/Node/Ollama automatically — those are system-wide and

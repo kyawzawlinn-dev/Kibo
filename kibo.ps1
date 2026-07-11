@@ -19,8 +19,9 @@ $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
 $userPath    = [System.Environment]::GetEnvironmentVariable("Path", "User")
 $env:Path    = @($machinePath, $userPath | Where-Object { $_ }) -join ";"
 
-$ChatModel  = "llama3.2"
-$EmbedModel = "nomic-embed-text"
+# Models - override for weak hardware, e.g. $env:KIBO_CHAT_MODEL="llama3.2:1b"
+$ChatModel  = if ($env:KIBO_CHAT_MODEL)  { $env:KIBO_CHAT_MODEL }  else { "llama3.2" }
+$EmbedModel = if ($env:KIBO_EMBED_MODEL) { $env:KIBO_EMBED_MODEL } else { "nomic-embed-text" }
 
 function Test-Tool($name) { $null -ne (Get-Command $name -ErrorAction SilentlyContinue) }
 
