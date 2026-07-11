@@ -44,6 +44,7 @@ func NewRouter(repo *bodyrecord.Repository, agent *chat2.ChatAgent, lib *library
 	r.HandleFunc("/api/records/import", handlers.HandleImportRecordsCSV).Methods("POST", "OPTIONS")
 	r.HandleFunc("/api/records/body", handlers.HandleGetBodyRecords).Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/records/body", handlers.HandleCreateBodyRecord).Methods("POST", "OPTIONS")
+	r.HandleFunc("/api/records/day", handlers.HandleSaveDayRecords).Methods("POST", "OPTIONS")
 	r.HandleFunc("/api/records/diet", handlers.HandleGetDietRecords).Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/records/diet", handlers.HandleCreateDietRecord).Methods("POST", "OPTIONS")
 

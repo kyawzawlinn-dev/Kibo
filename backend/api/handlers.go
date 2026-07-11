@@ -629,6 +629,75 @@ func (h *Handlers) HandleGetBodyRecords(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, records)
 }
 
+// HandleSaveDayRecords saves a whole day's record sheet: each metric
+// with a value is upserted (one row per metric per day), and each
+// metric explicitly cleared (value null) is deleted. Only known metric
+// types are accepted; the date cannot be in the future.
+func (h *Handlers) HandleSaveDayRecords(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Date    string              `json:"date"` // YYYY-MM-DD
+		Metrics map[string]*float64 `json:"metrics"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	day, err := time.ParseInLocation("2006-01-02", body.Date, time.Local)
+	if err != nil {
+		http.Error(w, "Invalid date", http.StatusBadRequest)
+		return
+	}
+	if day.After(time.Now()) {
+		http.Error(w, "Cannot record a future date", http.StatusBadRequest)
+		return
+	}
+	// noon local keeps the record on the chosen calendar day regardless
+	// of timezone
+	timestamp := day.Add(12 * time.Hour)
+
+	userID := profileID(r)
+	for recType, value := range body.Metrics {
+		unit, known := bodyrecord.DefaultUnits[recType]
+		if !known {
+			continue
+		}
+
+		if value == nil {
+			// cleared field → remove any existing entry for the day
+			if err := h.repo.DeleteBodyRecordForDay(r.Context(), userID, recType, body.Date); err != nil {
+				logger.Error("[handlers.go/HandleSaveDayRecords]:\tdelete %s: %v", recType, err)
+				http.Error(w, "Failed to save records", http.StatusInternalServerError)
+				return
+			}
+			continue
+		}
+		if *value <= 0 || *value > 100000 {
+			continue // ignore nonsensical values
+		}
+
+		if err := h.repo.UpsertBodyRecordForDay(r.Context(), bodyrecord.BodyRecord{
+			UserID:     userID,
+			RecordType: recType,
+			Value:      *value,
+			Unit:       unit,
+			Timestamp:  timestamp,
+		}); err != nil {
+			logger.Error("[handlers.go/HandleSaveDayRecords]:\tupsert %s: %v", recType, err)
+			http.Error(w, "Failed to save records", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	records, err := h.repo.GetBodyRecords(r.Context(), userID)
+	if err != nil {
+		logger.Error("[handlers.go/HandleSaveDayRecords]:\t%v", err)
+		http.Error(w, "Failed to reload records", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, records)
+}
+
 func (h *Handlers) HandleCreateDietRecord(w http.ResponseWriter, r *http.Request) {
 	var record bodyrecord.DietRecord
 	if err := json.NewDecoder(r.Body).Decode(&record); err != nil {

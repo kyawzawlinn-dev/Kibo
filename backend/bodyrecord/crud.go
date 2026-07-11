@@ -48,6 +48,42 @@ func (r *Repository) AddBodyRecord(ctx context.Context, br BodyRecord) (int64, e
 	return res.LastInsertId()
 }
 
+// UpsertBodyRecordForDay stores a single value for a metric on a given
+// calendar day: it replaces any existing rows for that user/type/day,
+// so the daily record sheet has exactly one value per metric per day.
+func (r *Repository) UpsertBodyRecordForDay(ctx context.Context, br BodyRecord) error {
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	day := br.Timestamp.Format("2006-01-02")
+	if _, err := tx.ExecContext(ctx,
+		"DELETE FROM body_records WHERE user_id = ? AND record_type = ? AND date(timestamp) = ?",
+		br.UserID, br.RecordType, day,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		"INSERT INTO body_records(user_id, record_type, value, unit, timestamp) VALUES(?,?,?,?,?)",
+		br.UserID, br.RecordType, br.Value, br.Unit, br.Timestamp,
+	); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// DeleteBodyRecordForDay removes any rows for a metric on a calendar
+// day — used when the user clears a field on the daily sheet.
+func (r *Repository) DeleteBodyRecordForDay(ctx context.Context, userID int64, recordType, day string) error {
+	_, err := r.DB.ExecContext(ctx,
+		"DELETE FROM body_records WHERE user_id = ? AND record_type = ? AND date(timestamp) = ?",
+		userID, recordType, day,
+	)
+	return err
+}
+
 func (r *Repository) GetBodyRecords(ctx context.Context, userID int64) ([]BodyRecord, error) {
 	rows, err := r.DB.QueryContext(ctx, "SELECT id, user_id, record_type, value, unit, timestamp FROM body_records WHERE user_id = ? ORDER BY timestamp DESC", userID)
 	if err != nil {

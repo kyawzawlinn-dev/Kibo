@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { BodyRecord as BodyRecordType } from "../types";
-import { getBodyRecords, addBodyRecord, importRecordsCSV, exportRecordsUrl } from "../services/api";
-import { Download, PlusCircle, Upload } from "lucide-react";
+import { getBodyRecords, saveDayRecords, importRecordsCSV, exportRecordsUrl } from "../services/api";
+import { CalendarDays, Download, Upload } from "lucide-react";
 import RecordChart from "./RecordChart"; // Import the new chart component
 
 // List of all supported record types for the form and trend charts.
@@ -20,23 +20,19 @@ const todayStr = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-// Initial Form State
-const initialFormState = {
-  recordType: "",
-  value: "",
-  unit: "",
-  date: todayStr(),
-};
-
 export default function BodyRecord() {
   const [records, setRecords] = useState<BodyRecordType[]>([]);
-  const [form, setForm] = useState(initialFormState);
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const importInput = useRef<HTMLInputElement>(null);
+
+  // Daily record sheet: the chosen day and one editable field per metric
+  const [sheetDate, setSheetDate] = useState(todayStr());
+  const [fields, setFields] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   // --- Fetch Data on Load ---
   useEffect(() => {
@@ -57,123 +53,123 @@ export default function BodyRecord() {
     }
   };
 
-  // --- Form Handlers ---
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    
-    // If the recordType changes, update the unit automatically if possible
-    if (name === 'recordType') {
-        const selectedType = SUPPORTED_RECORD_TYPES.find(t => t.value === value);
-        setForm(prev => ({ 
-            ...prev, 
-            recordType: value,
-            unit: selectedType ? selectedType.unit : prev.unit
-        }));
-    } else {
-        setForm(prev => ({ ...prev, [name]: value }));
+  // Pre-fill the sheet with the chosen day's existing values whenever
+  // the day or the underlying records change.
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    for (const m of SUPPORTED_RECORD_TYPES) {
+      const forDay = records.filter(
+        (r) => r.recordType === m.value && r.timestamp?.slice(0, 10) === sheetDate
+      );
+      // most recent wins if the day has legacy duplicates
+      const latest = forDay.sort((a, b) =>
+        (b.timestamp || "").localeCompare(a.timestamp || "")
+      )[0];
+      next[m.value] = latest ? String(latest.value) : "";
     }
-  };
+    setFields(next);
+    setSavedMsg(null);
+  }, [sheetDate, records]);
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveDay = async () => {
     setError(null);
-    setIsSubmitting(true);
+    setSavedMsg(null);
+    setIsSaving(true);
 
-    const numericValue = parseFloat(form.value);
-
-    if (!form.recordType || !form.unit || !form.date || isNaN(numericValue) || numericValue <= 0) {
-        setError("Please fill out all fields correctly.");
-        setIsSubmitting(false);
+    // Build the metrics payload: a number for a filled field, null to
+    // clear a field that had a value, and omit fields that stay empty.
+    const metrics: Record<string, number | null> = {};
+    for (const m of SUPPORTED_RECORD_TYPES) {
+      const raw = (fields[m.value] ?? "").trim();
+      const existing = records.some(
+        (r) => r.recordType === m.value && r.timestamp?.slice(0, 10) === sheetDate
+      );
+      if (raw === "") {
+        if (existing) metrics[m.value] = null; // cleared → delete
+        continue;
+      }
+      const num = parseFloat(raw);
+      if (isNaN(num) || num <= 0) {
+        setError(`Enter a valid number for ${m.value}, or leave it blank.`);
+        setIsSaving(false);
         return;
+      }
+      metrics[m.value] = num;
     }
 
     try {
-        // Noon local time keeps the record on the chosen calendar day
-        // regardless of timezone
-        const newRecord = await addBodyRecord({
-            recordType: form.recordType,
-            value: numericValue,
-            unit: form.unit,
-            timestamp: new Date(`${form.date}T12:00:00`).toISOString()
-        });
-        
-        // Add the new record to the list and reset form
-        setRecords(prev => [newRecord, ...prev]);
-        setForm(initialFormState);
+      const updated = await saveDayRecords(sheetDate, metrics);
+      setRecords(updated);
+      setSavedMsg(sheetDate === todayStr() ? "Saved today's record." : `Saved record for ${sheetDate}.`);
     } catch (err) {
-        setError("Failed to save record. Please try again.");
-        console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to save records.");
     } finally {
-        setIsSubmitting(false);
+      setIsSaving(false);
     }
   };
+
+  const dayHasData = SUPPORTED_RECORD_TYPES.some((m) => (fields[m.value] ?? "").trim() !== "");
 
   // --- Render Functions ---
 
   const RecordForm = (
     <div className="bg-night-850 border border-night-800 p-6 rounded-xl mb-6">
-      <h3 className="text-lg font-medium text-mint-soft mb-4 flex items-center">
-        <PlusCircle className="mr-2 w-5 h-5" /> Add new record
-      </h3>
-      <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {/* Record Type */}
-        <select
-          name="recordType"
-          value={form.recordType}
-          onChange={handleFormChange}
-          className="p-3 bg-night-900 border border-night-700 text-night-50 placeholder-night-400 rounded-lg focus:outline-none focus:border-mint"
-          disabled={isSubmitting}
-        >
-          <option value="">Select Type</option>
-          {SUPPORTED_RECORD_TYPES.map(type => (
-            <option key={type.value} value={type.value}>{type.value}</option>
-          ))}
-        </select>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <h3 className="text-lg font-medium text-mint-soft flex items-center">
+          <CalendarDays className="mr-2 w-5 h-5" /> Daily record
+        </h3>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-night-400">Date</label>
+          <input
+            type="date"
+            value={sheetDate}
+            max={todayStr()}
+            onChange={(e) => setSheetDate(e.target.value)}
+            className="p-2 bg-night-900 border border-night-700 text-night-50 rounded-lg focus:outline-none focus:border-mint"
+          />
+        </div>
+      </div>
 
-        {/* Value */}
-        <input
-          type="number"
-          name="value"
-          value={form.value}
-          onChange={handleFormChange}
-          placeholder="Value (e.g., 75 or 8.5)"
-          className="p-3 bg-night-900 border border-night-700 text-night-50 placeholder-night-400 rounded-lg focus:outline-none focus:border-mint"
-          disabled={isSubmitting}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {SUPPORTED_RECORD_TYPES.map((m) => (
+          <label key={m.value} className="flex flex-col gap-1.5">
+            <span className="flex items-center gap-2 text-sm text-night-200">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
+              {m.value}
+            </span>
+            <div className="flex items-center bg-night-900 border border-night-700 rounded-lg focus-within:border-mint">
+              <input
+                type="number"
+                inputMode="decimal"
+                value={fields[m.value] ?? ""}
+                onChange={(e) => setFields((prev) => ({ ...prev, [m.value]: e.target.value }))}
+                placeholder="—"
+                className="flex-1 min-w-0 p-3 bg-transparent text-night-50 placeholder-night-500 rounded-lg focus:outline-none"
+              />
+              <span className="px-3 text-sm text-night-400 shrink-0">{m.unit}</span>
+            </div>
+          </label>
+        ))}
+      </div>
 
-        {/* Unit */}
-        <input
-          type="text"
-          name="unit"
-          value={form.unit}
-          onChange={handleFormChange}
-          placeholder="Unit (e.g., kg or hours)"
-          className="p-3 bg-night-900 border border-night-700 text-night-50 placeholder-night-400 rounded-lg focus:outline-none focus:border-mint"
-          disabled={isSubmitting}
-        />
-
-        {/* Date (defaults to today; pick a past date to backfill) */}
-        <input
-          type="date"
-          name="date"
-          value={form.date}
-          onChange={handleFormChange}
-          max={todayStr()}
-          className="p-3 bg-night-900 border border-night-700 text-night-50 rounded-lg focus:outline-none focus:border-mint"
-          disabled={isSubmitting}
-        />
-
-        {/* Submit Button */}
+      <div className="flex items-center gap-4 mt-5">
         <button
-          type="submit"
-          className={`p-3 rounded-lg bg-mint text-mint-ink font-medium transition duration-150 ${
-            isSubmitting ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"
+          onClick={handleSaveDay}
+          disabled={isSaving}
+          className={`px-5 py-2.5 rounded-lg bg-mint text-mint-ink font-medium transition ${
+            isSaving ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"
           }`}
-          disabled={isSubmitting}
         >
-          {isSubmitting ? "Saving..." : "Save record"}
+          {isSaving ? "Saving..." : "Save day"}
         </button>
-      </form>
+        {savedMsg && <span className="text-sm text-mint-soft">{savedMsg}</span>}
+        {!savedMsg && !dayHasData && (
+          <span className="text-sm text-night-500">
+            Fill in what you have — leave the rest blank.
+          </span>
+        )}
+      </div>
+
       {error && (
         <p className="mt-3 text-sm text-red-400 p-2 bg-red-950/40 rounded-lg border border-red-900">
           {error}
@@ -181,7 +177,7 @@ export default function BodyRecord() {
       )}
     </div>
   );
-  
+
   const RecordChartSection = (
     <div className="bg-night-850 border border-night-800 p-6 rounded-xl mb-6">
       <h3 className="text-xl font-medium text-mint-soft mb-4">Trends</h3>

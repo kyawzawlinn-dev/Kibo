@@ -266,6 +266,27 @@ export async function getBodyRecords(): Promise<BodyRecord[]> {
   return (data ?? []).map(toBodyRecord);
 }
 
+// saveDayRecords upserts a whole day's sheet. metrics maps record type
+// to a value, or null to clear that metric for the day. Returns the
+// full refreshed record list.
+export async function saveDayRecords(
+  date: string,
+  metrics: Record<string, number | null>
+): Promise<BodyRecord[]> {
+  const res = await apiFetch(`${API_BASE_URL}/records/day`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ date, metrics }),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(txt.trim() || "Failed to save records");
+  }
+  const data = await res.json();
+  return (data ?? []).map(toBodyRecord);
+}
+
 export async function addBodyRecord(
   record: Omit<BodyRecord, "id">
 ): Promise<BodyRecord> {
