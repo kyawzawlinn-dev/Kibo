@@ -8,17 +8,17 @@ Millions of people live where the power cuts daily and the internet is a luxury 
 
 ## Screenshots
 
-| Grounded answers with sources | Health tracking with trends |
+| Grounded answers with sources | Health log, daily records, and trends |
 |---|---|
-| ![Chat with cited answer](docs/screenshots/chat.png) | ![Body records and trends](docs/screenshots/records.png) |
+| ![Chat with cited answer](docs/screenshots/chat.png) | ![Health tab with log and records](docs/screenshots/health.png) |
 
 | Instant first-aid cards (no AI) | One laptop serves every phone |
 |---|---|
 | ![Emergency first aid](docs/screenshots/emergency.png) | ![Share on Wi-Fi with QR code](docs/screenshots/share.png) |
 
-| Browsable, editable health library | Printable summary for the doctor |
+| Browsable, editable health library | A profile for every family member |
 |---|---|
-| ![Health library](docs/screenshots/library.png) | ![Doctor summary](docs/screenshots/summary.png) |
+| ![Health library](docs/screenshots/library.png) | ![Family profiles](docs/screenshots/profiles.png) |
 
 ## Features
 
@@ -32,7 +32,7 @@ Millions of people live where the power cuts daily and the internet is a luxury 
 
 **One laptop serves the whole household or clinic.** Open *Share on Wi-Fi*, scan the QR code with any phone on the same network, and that phone has Kibo — no internet involved, a local hotspot is enough. Combined with profiles, one charged laptop becomes a family health station.
 
-**A bridge to real doctors.** Visits are short and rare. The *Doctor summary* page prints months of records as a one-page overview — stats, trends, recent entries, and blanks to fill in by hand.
+**One place for your health.** The *Health* tab holds a **health log** (the illnesses, symptoms, and visits a clinician actually asks about), a daily record sheet for vitals, trend charts, and a printable **doctor summary** — the one-page overview to bring to a short, rare appointment.
 
 **Your data is a file, not a hostage.** Everything lives in a local SQLite database. Export your records as a plain CSV (USB-stick friendly), import them anywhere — re-importing a backup is deduplicated and always safe.
 
