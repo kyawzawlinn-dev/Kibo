@@ -28,10 +28,17 @@ export interface LibraryArticle {
   content: string;
 }
 
+export interface LogSuggestion {
+  date: string;
+  title: string;
+  severity: string;
+}
+
 export interface Message {
   id: number;
   text: string;
   sender: Sender;
+  logSuggestion?: LogSuggestion;
 }
 
 export interface Chat {
@@ -43,6 +50,7 @@ export interface Chat {
 export interface ChatResponse {
   reply: string;
   title: string;
+  log_suggestion?: LogSuggestion;
 }
 
 // Data models for interacting with the backend API

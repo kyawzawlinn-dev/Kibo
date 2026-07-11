@@ -204,11 +204,12 @@ export default function App() {
     // STEP 2 — Send to backend
     const res: ChatResponse = await sendMessage(text, activeChat.id);
 
-    // STEP 3 — Append AI reply
+    // STEP 3 — Append AI reply (with an optional health-log suggestion)
     const aiReply: Message = {
       id: Date.now() + 1,
       text: res.reply,
       sender: "ai",
+      logSuggestion: res.log_suggestion,
     };
 
     handleUpdateMessages([...optimisticMessages, aiReply]);

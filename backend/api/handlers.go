@@ -69,8 +69,9 @@ type GetChatResponse struct {
 }
 
 type ChatResponse struct {
-	Reply string `json:"reply"`
-	Title string `json:"title,omitempty"`
+	Reply         string               `json:"reply"`
+	Title         string               `json:"title,omitempty"`
+	LogSuggestion *chat2.LogSuggestion `json:"log_suggestion,omitempty"`
 }
 
 // chatIDFromRequest parses the {chat_id} path variable.
@@ -213,7 +214,7 @@ func (h *Handlers) SendMessage(w http.ResponseWriter, r *http.Request) {
 		title, _ = h.repo.RetrieveChatTitle(chatID)
 	}
 
-	reply, err := h.agent.Answer(ctx, userID, chatID, body.Message)
+	reply, suggestion, err := h.agent.Answer(ctx, userID, chatID, body.Message)
 	if err != nil {
 		logger.Error("[handlers.go/SendMessage]:\tagent: %v", err)
 		http.Error(w, "Failed to get AI response", http.StatusInternalServerError)
@@ -225,7 +226,7 @@ func (h *Handlers) SendMessage(w http.ResponseWriter, r *http.Request) {
 		logger.Error("[handlers.go/SendMessage]:\tsaving assistant reply: %v", err)
 	}
 
-	writeJSON(w, http.StatusOK, ChatResponse{Reply: reply, Title: title})
+	writeJSON(w, http.StatusOK, ChatResponse{Reply: reply, Title: title, LogSuggestion: suggestion})
 }
 
 // --- Profile handlers ---

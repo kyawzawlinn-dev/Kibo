@@ -25,6 +25,7 @@ type ChatAgent struct {
 	ollama     *OllamaClient
 	classifier *Classifier
 	logger     *RecordLogger
+	symptom    *SymptomLogger
 	repo       *bodyrecord.Repository
 }
 
@@ -34,19 +35,22 @@ func NewChatAgent(rag *RAGService, ollama *OllamaClient, repo *bodyrecord.Reposi
 		ollama:     ollama,
 		classifier: NewClassifier(ollama),
 		logger:     NewRecordLogger(ollama, repo),
+		symptom:    NewSymptomLogger(ollama),
 		repo:       repo,
 	}
 }
 
 // Answer generates the assistant reply for the latest user message in a
-// chat. The caller has already saved that message to chat_history, so
-// the loaded history includes it.
-func (a *ChatAgent) Answer(ctx context.Context, userID, chatID int64, message string) (string, error) {
+// chat. It may also return a LogSuggestion — an offer to add a symptom
+// to the health log — which the user confirms in the UI (never saved
+// automatically). The caller has already saved the message to
+// chat_history, so the loaded history includes it.
+func (a *ChatAgent) Answer(ctx context.Context, userID, chatID int64, message string) (string, *LogSuggestion, error) {
 	// Red-flag messages get the first-aid card immediately — before
 	// any LLM call. In an emergency nobody waits for token generation.
 	if card := emergency.Match(message); card != nil {
 		logger.Info("[agent.go/Answer]:\temergency card matched: %s", card.ID)
-		return formatEmergencyReply(card), nil
+		return formatEmergencyReply(card), nil, nil
 	}
 
 	cl := a.classifier.Classify(ctx, message)
@@ -59,9 +63,9 @@ func (a *ChatAgent) Answer(ctx context.Context, userID, chatID int64, message st
 	// user to rephrase.
 	if cl.Intent == "LOG_RECORD" {
 		if reply, ok := a.logger.TryLog(ctx, userID, message); ok {
-			return reply, nil
+			return reply, nil, nil
 		}
-		return `I couldn't read a measurement from that. Try something like: "weight 68.5 kg", "slept 7 hours", or "drank 2L of water yesterday".`, nil
+		return `I couldn't read a measurement from that. Try something like: "weight 68.5 kg", "slept 7 hours", or "drank 2L of water yesterday".`, nil, nil
 	}
 
 	history, err := a.repo.GetRecentChatHistory(ctx, chatID, historyWindow)
@@ -75,9 +79,18 @@ func (a *ChatAgent) Answer(ctx context.Context, userID, chatID int64, message st
 
 	resp, err := a.rag.Ask(ctx, prompt, message, userID, cl.NeedsRAG())
 	if err != nil {
-		return "", fmt.Errorf("agent failed: %w", err)
+		return "", nil, fmt.Errorf("agent failed: %w", err)
 	}
-	return resp, nil
+
+	// If the message describes a symptom, offer to log it. Runs after
+	// the answer is ready, so it never delays a non-symptom reply; a
+	// failure just means no suggestion.
+	var suggestion *LogSuggestion
+	if cl.Intent == "HEALTH_SYMPTOM" {
+		suggestion = a.symptom.Suggest(ctx, message)
+	}
+
+	return resp, suggestion, nil
 }
 
 // formatEmergencyReply renders a first-aid card as a chat message.
