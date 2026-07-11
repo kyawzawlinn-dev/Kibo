@@ -29,7 +29,11 @@ RULES:
   knowledge base — do NOT invent medical facts, dosages, or diagnoses.
 - If medication is discussed, add a short safety disclaimer.
 - If symptoms sound dangerous, recommend seeking professional care.
-- Use the user's personal health records when they are relevant.`
+- Take any symptom the user reports at face value. Never dispute or
+  explain away a symptom the user tells you they have.
+- The personal health records (weight, sleep, activity, water) are
+  background only. Use them only when directly relevant to the
+  question, and never to reason about an unrelated symptom.`
 
 // RAGService orchestrates retrieval + augmentation + generation.
 type RAGService struct {
