@@ -1,10 +1,8 @@
-# 🌿 Kibo — Your Health Companion That Never Needs the Internet
+# 🌿 Kibo — offline AI health companion
 
-> **One laptop. Zero internet. A personal health assistant for the places the cloud forgot.**
+A fully offline health assistant for low-connectivity, low-power settings. It runs on a modest laptop with no internet: chat grounded in a local medical library, health tracking, instant first-aid cards, and per-person profiles — all from a single binary, with data that never leaves the device.
 
-Millions of people live where the power cuts daily and the internet is a luxury — but their health questions don't wait for a connection. Kibo is a **fully offline AI health companion**: it tracks your family's health, answers questions from a trusted medical library, and puts first-aid steps one tap away — all running locally on modest hardware, with your data never leaving your device.
-
-> ⚠️ **Kibo is not a doctor.** It is a companion and reference tool. Always seek professional medical care for serious conditions.
+> ⚠️ Kibo is not a doctor. It's a companion and reference tool; always seek professional care for serious conditions.
 
 ## Screenshots
 
@@ -22,61 +20,70 @@ Millions of people live where the power cuts daily and the internet is a luxury 
 
 ## Features
 
-**Works when nothing else does.** After a one-time setup, Kibo runs entirely on your machine — through blackouts, outages, and dead zones. One ~14 MB Go binary serves the whole app; the only other piece is [Ollama](https://ollama.com) running the local AI models.
+- **Grounded offline chat** — answers draw on a curated local health library (RAG) and cite their sources; passages below a relevance threshold are dropped, so off-topic questions get no fabricated citations.
+- **Personal context** — the AI reads your own tracked records and per-chat history, persisted in SQLite so it survives restarts.
+- **Emergency mode** — eight first-aid cards embedded in the binary; red-flag chat messages return the matching card in ~13 ms, with no LLM in the path.
+- **Health tab** — a health log (symptom/illness/visit history), a daily vitals sheet, trend charts, and a printable one-page doctor summary.
+- **Log by chatting** — "yesterday I slept 5 hours" saves a record; confirmations are built from what was actually stored, never from the model.
+- **Editable library** — read, search, add, and edit the articles the AI cites; new articles are indexed live.
+- **Wi-Fi sharing** — one laptop serves every phone on the local network via a QR code; works on a hotspot with no internet.
+- **Family profiles** — separate chats and records per person on one device.
+- **Local data, portable** — one SQLite file; CSV export/import with safe deduplication.
 
-**An AI that actually knows you.** Tell Kibo *"yesterday I slept 5 hours and drank 2L of water"* — it saves the records and confirms exactly what it stored. Ask *"why do I keep getting headaches?"* and it answers using **your own health history**, not generic advice. Every family member gets their own profile with their own chats and records.
+## Architecture
 
-**Answers you can trust, with receipts.** Kibo doesn't let the AI freestyle medical facts. Answers are grounded in a curated offline health library (diarrhea & ORS, malaria & dengue, wound care, pregnancy danger signs, child nutrition, safe water, and more) and **cite their sources** — which you can open, read, edit, and extend right in the app. Off-topic questions get no fake citations: passages below a relevance threshold never reach the model.
-
-**Emergency mode: instant, no AI required.** Choking, severe bleeding, chest pain, snakebite, child fever — curated first-aid cards are embedded in the binary and open in two taps. Red-flag chat messages ("someone is choking") get the matching card in ~13 milliseconds, before any AI is involved. When seconds matter, nothing generates — it just shows.
-
-**One laptop serves the whole household or clinic.** Open *Share on Wi-Fi*, scan the QR code with any phone on the same network, and that phone has Kibo — no internet involved, a local hotspot is enough. Combined with profiles, one charged laptop becomes a family health station.
-
-**One place for your health.** The *Health* tab holds a **health log** (the illnesses, symptoms, and visits a clinician actually asks about), a daily record sheet for vitals, trend charts, and a printable **doctor summary** — the one-page overview to bring to a short, rare appointment.
-
-**Your data is a file, not a hostage.** Everything lives in a local SQLite database. Export your records as a plain CSV (USB-stick friendly), import them anywhere — re-importing a backup is deduplicated and always safe.
-
-## How it works
+One Go binary serves the API and the UI; the only runtime dependency is [Ollama](https://ollama.com).
 
 ```
-You: "I've had a headache for 3 days"
-        │
-        ▼
- ┌─── Kibo (all local) ────────────────────┐
- │ 0. Red-flag check → first-aid card      │
- │ 1. Checks YOUR records (sleep ↓, BP ↑)  │
- │ 2. Searches the offline medical library │
- │ 3. Local AI writes a grounded answer    │
- │ 4. Sources appended from what was       │
- │    actually retrieved — never invented  │
- └─────────────────────────────────────────┘
+Browser ── React SPA (embedded via go:embed)
+   │  same-origin /api
+Go server (net/http + gorilla/mux)
+   ├── SQLite ........ chats, records, profiles, health log
+   ├── chromem-go .... in-process vector store (no external DB)
+   └── Ollama ........ llama3.2 (chat) + nomic-embed-text (embeddings)
 ```
 
-**Stack:** a single Go binary (API + embedded React UI + embedded vector search via chromem-go) · SQLite · [Ollama](https://ollama.com) running `llama3.2` and `nomic-embed-text`.
+Request flow for a chat message:
 
-### Kibo vs. plain Ollama
+```
+message
+ ├─ emergency keyword match → first-aid card   (deterministic, no LLM)
+ ├─ classifier                                  (1 LLM call: intent + service)
+ ├─ if health intent → RAG:
+ │     retrieve personal records + KB passages  (vector search + threshold)
+ │     grounded generation
+ │     append citations from the passages actually used
+ └─ conversation memory read from SQLite        (per chat, survives restart)
+```
 
-Ollama is an engine; Kibo is the vehicle. Raw Ollama has no memory of your health history, no grounding (small models hallucinate medical facts confidently), no emergency path that works without the model, and no interface a non-technical family member can use. Kibo supplies the records, the trusted library, the safety rails, and the product around the model.
+Design choices worth noting:
+
+- **Single binary, no Docker.** The React build is embedded with `go:embed`; the vector store runs in-process (chromem-go). `go build` produces one ~14 MB executable.
+- **Safety is deterministic.** First-aid cards and record confirmations never pass through the LLM, so it can't paraphrase first-aid steps or claim to have saved data it didn't.
+- **Grounding over trust.** Retrieval runs on the raw user message; low-similarity passages are dropped, so answers are either cited from real sources or say they don't have the information.
+- **Same-origin API.** The SPA calls `/api` relative, so LAN sharing and profiles work with no per-device configuration.
+
+**Stack:** Go · SQLite · chromem-go · Ollama · React + TypeScript + Vite + Tailwind
 
 ## Quick start
 
-Requirements: Go, Node.js (build only), and [Ollama](https://ollama.com). One command does everything — checks Ollama, pulls the models if missing, builds, and runs:
+Requirements: Go, Node.js (build only), and [Ollama](https://ollama.com). One script handles the rest — checks Ollama, pulls the models if missing, builds, and runs:
 
 ```bash
-./kibo.sh          # build and run the app → http://localhost:8080
-./kibo.sh dev      # development mode with hot reload → http://localhost:5173
-./kibo.sh build    # just build the single binary (backend/kibo)
-./kibo.sh stop     # stop anything kibo left running
+./kibo.sh          # build and run → http://localhost:8080
+./kibo.sh dev      # hot-reload dev mode → http://localhost:5173
+./kibo.sh build    # build the binary only (backend/kibo)
+./kibo.sh stop     # stop anything left running
 ```
 
-The first run needs internet once (models, npm packages). After that, Kibo is fully offline: all data stays in `data/`, and Node is never needed at runtime.
+The first run needs internet once (models, npm packages). After that Kibo is fully offline — all data stays in `data/`, and Node is never needed at runtime.
 
 ## Roadmap
 
+- [ ] AI-suggested health-log entries from chat (one-tap confirm, never auto-saved)
 - [ ] Import from Apple Health (`export.xml`) and Google Takeout
-- [ ] Knowledge-base update packs distributable by USB stick (offline updates)
+- [ ] Knowledge-base update packs distributable by USB stick
 - [ ] Local-language support
-- [ ] Battery-saver behaviours for laptops running on inverters and power banks
 
 ## License
 
