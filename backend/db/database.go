@@ -8,7 +8,9 @@ import (
 
 	logger "Kibo/backend/kibo_utils"
 
-	_ "github.com/mattn/go-sqlite3"
+	// pure-Go SQLite driver — no CGO / C compiler needed, so the app
+	// builds on any machine with just Go (Windows included)
+	_ "modernc.org/sqlite"
 )
 
 // NewDB creates a new SQLite database connection and ensures tables exist
@@ -19,7 +21,7 @@ func NewDB(dbPath string) (*sql.DB, error) {
 	}
 
 	// Open the database file. It will be created if it doesn't exist.
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		logger.Error("[database.go/NewDB]:\tfailed to open database: %v", err)
 		return nil, err
