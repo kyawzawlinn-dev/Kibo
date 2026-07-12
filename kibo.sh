@@ -10,6 +10,23 @@
 set -e
 cd "$(dirname "$0")"
 
+# Auto-pick a lighter model on low-RAM machines (the 3B default needs
+# ~2.5-3 GB and produces garbage if it doesn't fit). Override anytime
+# with KIBO_CHAT_MODEL.
+if [ -z "${KIBO_CHAT_MODEL:-}" ]; then
+  if [ "$(uname)" = "Darwin" ]; then
+    ram_gb=$(( $(sysctl -n hw.memsize) / 1073741824 ))
+  elif [ -r /proc/meminfo ]; then
+    ram_gb=$(awk '/MemTotal/ {print int($2/1048576)}' /proc/meminfo)
+  else
+    ram_gb=8
+  fi
+  if [ "$ram_gb" -lt 6 ]; then
+    export KIBO_CHAT_MODEL="llama3.2:1b"
+    echo "Note: ${ram_gb} GB RAM detected — using the lighter model llama3.2:1b (override with KIBO_CHAT_MODEL)."
+  fi
+fi
+
 # Models — override for weak hardware, e.g. KIBO_CHAT_MODEL=llama3.2:1b
 CHAT_MODEL="${KIBO_CHAT_MODEL:-llama3.2}"
 EMBED_MODEL="${KIBO_EMBED_MODEL:-nomic-embed-text}"

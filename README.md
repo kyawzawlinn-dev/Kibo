@@ -74,7 +74,19 @@ Install [Go](https://go.dev/dl/), [Node.js](https://nodejs.org) (build only), an
 
 The first run needs internet once (models, npm packages). After that Kibo is fully offline — all data stays in `data/`, and Node is never needed at runtime.
 
-**Low-end hardware:** the default `llama3.2` (3B) needs ~2–3 GB of free RAM. On a weaker machine it may be slow or produce garbled replies — switch to the 1B model by setting `KIBO_CHAT_MODEL` before running:
+## Hardware
+
+Kibo runs on modest machines — the local AI model is the main constraint, and it's driven by RAM:
+
+| RAM | Model | Experience |
+|-----|-------|------------|
+| ~4 GB | `llama3.2:1b` (auto) | Works; simpler, shorter answers, slower replies |
+| 8 GB+ | `llama3.2` (3B, default) | Better answers, still fine on CPU |
+
+- **CPU:** any 64-bit CPU with AVX2 (Intel ~2013+, AMD ~2015+) — nearly all laptops since ~2014. GPU optional (speeds up replies, not required).
+- **Disk:** ~2–3 GB for the AI models.
+
+The launcher **checks your RAM and picks the lighter model automatically** on low-memory machines — no configuration needed. To force a model yourself:
 
 ```bash
 KIBO_CHAT_MODEL=llama3.2:1b ./kibo.sh          # macOS / Linux
@@ -83,7 +95,7 @@ KIBO_CHAT_MODEL=llama3.2:1b ./kibo.sh          # macOS / Linux
 $env:KIBO_CHAT_MODEL="llama3.2:1b"; .\kibo.ps1  # Windows
 ```
 
-Run `./kibo.sh setup` (or `.\kibo.ps1 setup`) with the same variable set so it pulls that model.
+Set the same variable before `setup` so it pulls that model. Note the AI runs on a small local model — answers are helpful but simpler than a cloud service, and can be slow on old CPUs.
 
 ## Roadmap
 

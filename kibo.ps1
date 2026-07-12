@@ -19,6 +19,17 @@ $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
 $userPath    = [System.Environment]::GetEnvironmentVariable("Path", "User")
 $env:Path    = @($machinePath, $userPath | Where-Object { $_ }) -join ";"
 
+# Auto-pick a lighter model on low-RAM machines (the 3B default needs
+# ~2.5-3 GB and produces garbage if it doesn't fit). Override anytime
+# with $env:KIBO_CHAT_MODEL.
+if (-not $env:KIBO_CHAT_MODEL) {
+    $ramGB = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
+    if ($ramGB -lt 6) {
+        $env:KIBO_CHAT_MODEL = "llama3.2:1b"
+        Write-Host "Note: $ramGB GB RAM detected - using the lighter model llama3.2:1b (override with `$env:KIBO_CHAT_MODEL)."
+    }
+}
+
 # Models - override for weak hardware, e.g. $env:KIBO_CHAT_MODEL="llama3.2:1b"
 $ChatModel  = if ($env:KIBO_CHAT_MODEL)  { $env:KIBO_CHAT_MODEL }  else { "llama3.2" }
 $EmbedModel = if ($env:KIBO_EMBED_MODEL) { $env:KIBO_EMBED_MODEL } else { "nomic-embed-text" }
