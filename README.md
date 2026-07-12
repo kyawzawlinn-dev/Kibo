@@ -99,10 +99,8 @@ Set the same variable before `setup` so it pulls that model. Note the AI runs on
 
 ## Roadmap
 
-- [ ] AI-suggested health-log entries from chat (one-tap confirm, never auto-saved)
-- [ ] Import from Apple Health (`export.xml`) and Google Takeout
-- [ ] Knowledge-base update packs distributable by USB stick
-- [ ] Local-language support
+- [x] AI-suggested health-log entries from chat (one-tap confirm, never auto-saved)
+- [ ] Grow the curated health library (the app's real value)
 
 ## License
 

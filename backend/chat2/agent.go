@@ -87,11 +87,13 @@ func (a *ChatAgent) Answer(ctx context.Context, userID, chatID int64, message st
 		return "", nil, fmt.Errorf("agent failed: %w", err)
 	}
 
-	// If the message describes a symptom, offer to log it. Runs after
-	// the answer is ready, so it never delays a non-symptom reply; a
-	// failure just means no suggestion.
+	// Offer to log a symptom for any health message — small models
+	// often label a symptom as HEALTH_INFO rather than HEALTH_SYMPTOM.
+	// Suggest() first checks a cheap ownership regex, so non-personal
+	// questions ("is a fever dangerous?") make no LLM call and get no
+	// chip; only "I have…/my…" messages do.
 	var suggestion *LogSuggestion
-	if cl.Intent == "HEALTH_SYMPTOM" {
+	if strings.HasPrefix(cl.Intent, "HEALTH_") {
 		suggestion = a.symptom.Suggest(ctx, message)
 	}
 
