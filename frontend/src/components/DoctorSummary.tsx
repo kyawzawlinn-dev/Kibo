@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Printer } from "lucide-react";
-import { getBodyRecords } from "../services/api";
-import type { BodyRecord } from "../types";
+import { getBodyRecords, getHealthLog } from "../services/api";
+import type { BodyRecord, HealthLogEntry } from "../types";
 
 const METRICS = [
   { type: "Weight", unit: "kg" },
@@ -19,6 +19,10 @@ const RANGES = [
 const fmtDate = (ts?: string) =>
   ts ? new Date(ts).toLocaleDateString() : "—";
 
+// health-log dates are plain YYYY-MM-DD; read at noon so the calendar
+// day is timezone-stable
+const fmtDay = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString();
+
 /**
  * A printable summary of the user's health records to bring to a
  * doctor. Rendered as a light "paper preview" regardless of the app
@@ -27,6 +31,7 @@ const fmtDate = (ts?: string) =>
  */
 export default function DoctorSummary() {
   const [records, setRecords] = useState<BodyRecord[]>([]);
+  const [log, setLog] = useState<HealthLogEntry[]>([]);
   const [days, setDays] = useState(90);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +39,15 @@ export default function DoctorSummary() {
     getBodyRecords()
       .then(setRecords)
       .catch(() => setError("Failed to load records."));
+    getHealthLog().then(setLog).catch(() => {});
   }, []);
+
+  const logEntries = useMemo(() => {
+    const cutoff = days > 0 ? Date.now() - days * 86400000 : 0;
+    return log
+      .filter((e) => new Date(`${e.date}T12:00:00`).getTime() >= cutoff)
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [log, days]);
 
   const filtered = useMemo(() => {
     const cutoff = days > 0 ? Date.now() - days * 86400000 : 0;
@@ -118,6 +131,31 @@ export default function DoctorSummary() {
           <p className="flex-1">
             Date of birth: <span className="inline-block w-40 border-b border-gray-400" />
           </p>
+        </div>
+
+        {/* Health log — the episode history a clinician reads first */}
+        <div className="mb-6 break-inside-avoid">
+          <h3 className="text-base font-semibold border-b border-gray-300 pb-1 mb-2">
+            Health log
+          </h3>
+          {logEntries.length === 0 ? (
+            <p className="text-sm text-gray-500 italic">No episodes in this period.</p>
+          ) : (
+            <table className="w-full text-sm border-collapse">
+              <tbody>
+                {logEntries.map((e) => (
+                  <tr key={e.id} className="border-b border-gray-200 align-top">
+                    <td className="py-1 text-gray-600 w-28">{fmtDay(e.date)}</td>
+                    <td className="py-1">
+                      <span className="font-medium">{e.title}</span>
+                      {e.severity ? ` (${e.severity})` : ""}
+                      {e.notes ? <span className="text-gray-600"> — {e.notes}</span> : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {metricData.map((m) => (

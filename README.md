@@ -99,8 +99,7 @@ Set the same variable before `setup` so it pulls that model. Note the AI runs on
 
 ## Roadmap
 
-- [x] AI-suggested health-log entries from chat (one-tap confirm, never auto-saved)
-- [ ] Grow the curated health library (the app's real value)
+- [ ] Keep improving answer quality — prompt tuning, a richer health library, and better behaviour on small local models
 
 ## License
 

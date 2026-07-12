@@ -111,8 +111,6 @@ export async function getChatHistory(chatID: number): Promise<ChatHistoryRespons
   }
 
   const data = await res.json();
-  
-  console.log("[DEBUG][API] /chat response:", data);
 
   return data;
 }
@@ -129,7 +127,7 @@ export async function deleteChat(chatID: number): Promise<void> {
 
 /* -----------------------------
    SEND MESSAGE TO CHAT
-   FIXED: This must call /chat/:id/message
+
 ------------------------------ */
 export async function sendMessage(message: string, chatID: number): Promise<ChatResponse> {
   const res = await apiFetch(`${API_BASE_URL}/chat/${chatID}/message`, {

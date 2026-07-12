@@ -63,8 +63,6 @@ export default function App() {
       try {
         const backendChats = await getAllChats();
 
-        console.log("[LOAD CHATS RAW]", backendChats);
-
         const parsed: Chat[] = backendChats.map((chat: any, index: number) => ({
           id: chat.id ?? chat.ID,
           name: chat.title ?? chat.Title ?? `Chat ${index + 1}`,
